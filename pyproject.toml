@@ -1,0 +1,49 @@
+[build-system]
+# Should be mirrored in requirements/build.txt
+requires = [
+    "cmake>=3.26",
+    "ninja",
+    "packaging",
+    "setuptools>=61",
+    "setuptools-scm>=8.0",
+    "torch == 2.6.0",
+    "wheel",
+    "jinja2",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm_metax_plugin"
+authors = [{name = "Metax Team"}]
+license = { "file"= "LICENSE" }
+readme = "README.md"
+description = "vLLM Metax backend plugin"
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+requires-python = ">=3.9,<3.13"
+dynamic = [ "version", "dependencies", "optional-dependencies"]
+
+[project.entry-points."vllm.platform_plugins"]
+metax = "vllm_metax_plugin:register"
+
+[project.entry-points."vllm.general_plugins"]
+metax_enhanced_model = "vllm_metax_plugin:register_model"
+
+[project.entry-points."console_scripts"]
+vllm_metax_init = "vllm_metax_plugin:post_installation"
+
+[tool.setuptools_scm]
+# no extra settings needed, presence enables setuptools-scm
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vllm_metax_plugin*"]
