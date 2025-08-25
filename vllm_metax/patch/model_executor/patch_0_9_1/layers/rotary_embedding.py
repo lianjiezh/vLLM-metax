@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -23,5 +23,5 @@ def _apply_rotary_emb(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor,
                             not is_neox_style).squeeze(0)
 
 vllm.model_executor.layers.rotary_embedding._apply_rotary_emb = _apply_rotary_emb
-register_patch("vllm.model_executor.layers.rotary_embedding", "_apply_rotary_emb", _apply_rotary_emb)
+
 

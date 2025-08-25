@@ -1,5 +1,5 @@
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -18,4 +18,3 @@ class MetaxCompressedTensorsConfig(CompressedTensorsConfig):
 
 
 compressed_tensors.CompressedTensorsConfig = MetaxCompressedTensorsConfig
-register_patch("vllm.model_executor.layers.quantization.compressed_tensors.compressed_tensors", "CompressedTensorsConfig", MetaxCompressedTensorsConfig)

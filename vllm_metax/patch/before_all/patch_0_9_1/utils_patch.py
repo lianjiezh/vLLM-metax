@@ -7,7 +7,7 @@ import torch
 from typing import (Optional, Union)
 from vllm.utils import _generate_random_fp8, get_kv_cache_torch_dtype
 
-from vllm_metax.patch.hook_registry import register_patch
+
 
 logger = init_logger(__name__)
 
@@ -73,6 +73,6 @@ def import_pynvml():
 vllm.utils.find_nccl_library = find_nccl_library
 vllm.utils.import_pynvml = import_pynvml
 
-register_patch("vllm.utils", "find_nccl_library", find_nccl_library);
-register_patch("vllm.utils", "import_pynvml", import_pynvml);
+
+
 

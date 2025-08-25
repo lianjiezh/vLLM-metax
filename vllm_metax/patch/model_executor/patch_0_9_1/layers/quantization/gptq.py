@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -165,8 +165,7 @@ vllm.model_executor.layers.quantization.gptq._apply_gptq = _apply_gptq
 vllm.model_executor.layers.quantization.gptq.GPTQLinearMethod.process_weights_after_loading  = process_weights_after_loading
 vllm.model_executor.layers.quantization.gptq.GPTQLinearMethod.apply  = apply
 
-register_patch("vllm.model_executor.layers.quantization.gptq", "GPTQConfig.get_supported_act_dtypes", classmethod(get_supported_act_dtypes))
-register_patch("vllm.model_executor.layers.quantization.gptq", "_apply_gptq_fake", _apply_gptq_fake)
-register_patch("vllm.model_executor.layers.quantization.gptq", "_apply_gptq", _apply_gptq)
-register_patch("vllm.model_executor.layers.quantization.gptq", "GPTQLinearMethod.process_weights_after_loading", process_weights_after_loading)
-register_patch("vllm.model_executor.layers.quantization.gptq", "GPTQLinearMethod.apply", apply)
+
+
+
+

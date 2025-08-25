@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -576,13 +576,13 @@ vllm.model_executor.layers.linear.MergedColumnParallelLinear.weight_loader = Mer
 vllm.model_executor.layers.linear.QKVParallelLinear.weight_loader = QKVParallelLinear_weight_loader
 vllm.model_executor.layers.linear.RowParallelLinear.weight_loader = RowParallelLinear_weight_loader
 
-register_patch("vllm.model_executor.layers.linear", "adjust_scalar_to_fused_array", adjust_scalar_to_fused_array)
-register_patch("vllm.model_executor.layers.linear", "UnquantizedLinearMethod.create_weights", UnquantizedLinearMethod_create_weights)
-register_patch("vllm.model_executor.layers.linear", "UnquantizedLinearMethod.apply", UnquantizedLinearMethod_apply)
-register_patch("vllm.model_executor.layers.linear", "ReplicatedLinear.weight_loader", ReplicatedLinear_weight_loader)
-register_patch("vllm.model_executor.layers.linear", "ColumnParallelLinear.weight_loader", ColumnParallelLinear_weight_loader)
-register_patch("vllm.model_executor.layers.linear", "MergedColumnParallelLinear.weight_loader", MergedColumnParallelLinear_weight_loader)
-register_patch("vllm.model_executor.layers.linear", "QKVParallelLinear.weight_loader", QKVParallelLinear_weight_loader)
-register_patch("vllm.model_executor.layers.linear", "RowParallelLinear.weight_loader", RowParallelLinear_weight_loader)
+
+
+
+
+
+
+
+
 
 

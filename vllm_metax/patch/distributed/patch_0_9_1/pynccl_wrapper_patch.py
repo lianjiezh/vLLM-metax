@@ -3,7 +3,7 @@
 import vllm
 import platform
 from vllm.logger import init_logger
-from vllm_metax.patch.hook_registry import register_patch
+
 
 from vllm.distributed.device_communicators.pynccl_wrapper import (Function,
                                                                   ncclResult_t,
@@ -234,5 +234,5 @@ class NCCLLibrary:
 
 
 vllm.distributed.device_communicators.pynccl_wrapper.NCCLLibrary = NCCLLibrary
-register_patch("vllm.distributed.device_communicators.pynccl_wrapper", "NCCLLibrary", NCCLLibrary)
+
 

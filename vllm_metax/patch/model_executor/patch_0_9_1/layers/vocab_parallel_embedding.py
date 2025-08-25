@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -105,8 +105,8 @@ vllm.model_executor.layers.vocab_parallel_embedding.get_masked_input_and_mask = 
 vllm.model_executor.layers.vocab_parallel_embedding.VocabParallelEmbedding = VocabParallelEmbedding
 vllm.model_executor.layers.vocab_parallel_embedding.ParallelLMHead = ParallelLMHead
 
-register_patch("vllm.model_executor.layers.vocab_parallel_embedding", "UnquantizedEmbeddingMethod", UnquantizedEmbeddingMethod)
-register_patch("vllm.model_executor.layers.vocab_parallel_embedding", "get_masked_input_and_mask", get_masked_input_and_mask)
-register_patch("vllm.model_executor.layers.vocab_parallel_embedding", "VocabParallelEmbedding", VocabParallelEmbedding)
-register_patch("vllm.model_executor.layers.vocab_parallel_embedding", "ParallelLMHead", ParallelLMHead)
+
+
+
+
 

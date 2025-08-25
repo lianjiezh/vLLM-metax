@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -24,4 +24,3 @@ def override_quantization_method(cls, hf_quant_cfg,
 # └------------------------- Metax Modification -------------------------┘
     
 vllm.model_executor.layers.quantization.base_config.QuantizationConfig.override_quantization_method = classmethod(override_quantization_method)
-register_patch("vllm.model_executor.layers.quantization.base_config", "QuantizationConfig.override_quantization_method", classmethod(override_quantization_method))
