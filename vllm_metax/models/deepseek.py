@@ -56,7 +56,7 @@ from vllm.model_executor.models.interfaces import SupportsPP
 from vllm.model_executor.models.utils import (extract_layer_index, is_pp_missing_parameter,
                     make_empty_intermediate_tensors_factory, make_layers,
                     maybe_prefix)
-from vllm import envs
+import vllm_metax.envs as mx_envs
 
 
 class DeepseekMLP(nn.Module):
@@ -159,7 +159,7 @@ class DeepseekMoE(nn.Module):
 
         self.w2 = self.w2.view(len(w2), *w2s[0].shape)
             
-        if envs.MACA_VLLM_USE_TN_2_NN:
+        if mx_envs.MACA_VLLM_USE_TN_2_NN:
             self.w1 = self.w1.permute(0,2,1).contiguous()   
             for expert, w in zip(self.experts, self.w1):
                 expert.gate_up_proj.weight.data = w.permute(1,0)

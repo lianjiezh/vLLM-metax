@@ -100,6 +100,10 @@ class MetaXPlatformBase(Platform):
 
     @classmethod
     def check_and_update_config(cls, vllm_config: "VllmConfig") -> None:
+        # Env Override
+        envs.VLLM_USE_FLASHINFER_SAMPLER = False
+
+        # Config Override
         parallel_config = vllm_config.parallel_config
         scheduler_config = vllm_config.scheduler_config
         compilation_config = vllm_config.compilation_config

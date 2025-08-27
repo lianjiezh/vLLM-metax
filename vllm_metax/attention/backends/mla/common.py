@@ -18,7 +18,8 @@ if HAS_TRITON:
 else:
     triton_attention = None
 
-from vllm import envs
+import vllm_metax.envs as mx_envs
+
 from itertools import accumulate
 from vllm.attention.backends.utils import PAD_SLOT_ID
 from vllm.model_executor.layers.linear import (ColumnParallelLinear,
@@ -28,9 +29,6 @@ from vllm.model_executor.layers.rotary_embedding import (
     DeepseekScalingRotaryEmbedding, RotaryEmbedding)
 from vllm.triton_utils import HAS_TRITON
 from vllm.utils import async_tensor_h2d, cdiv, make_tensor_with_pad, round_down
-
-
-from vllm import envs
 
 from flash_attn import flash_attn_varlen_func
 
@@ -295,7 +293,7 @@ class MetaxMLACommonImpl(MLACommonImpl[T], Generic[T]):
                 del eye
                 # standardize to (output, input)
                 return dequant_weights.T
-            return layer.weight if not envs.MACA_VLLM_USE_TN_2_NN else layer.weight.T
+            return layer.weight if not mx_envs.MACA_VLLM_USE_TN_2_NN else layer.weight.T
 
         # we currently do not have quantized bmm's which are needed for
         # `W_UV` and `W_UK_T`, we we just store fp16/bf16 copies and perform

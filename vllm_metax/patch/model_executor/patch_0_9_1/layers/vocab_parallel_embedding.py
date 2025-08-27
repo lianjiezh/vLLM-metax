@@ -8,7 +8,7 @@ logger = init_logger(__name__)
 
 import torch
 import inspect
-from vllm import envs
+import vllm_metax.envs as mx_envs
 from typing import Optional, Tuple
 from vllm.platforms import current_platform
 from torch.nn.parameter import Parameter, UninitializedParameter
@@ -79,7 +79,7 @@ def vocab_enbedding_weight_loader(self, param: Parameter, loaded_weight: torch.T
     # Copy the data. Select chunk corresponding to current shard.
     loaded_weight = loaded_weight.narrow(output_dim, start_idx, shard_size)
 
-    if envs.MACA_VLLM_USE_TN_2_NN:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN:
         loaded_weight = loaded_weight.t()
         # we should padding last dimension after weight transpose
         padding_needed = max(self.num_embeddings_per_partition - loaded_weight.size(-1), 0)

@@ -4,8 +4,6 @@ import vllm
 from vllm import envs, logger
 from vllm.logger import init_logger
 import torch
-from typing import (Optional, Union)
-from vllm.utils import _generate_random_fp8, get_kv_cache_torch_dtype
 
 
 

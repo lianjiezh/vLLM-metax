@@ -6,7 +6,16 @@
 # https://github.com/huggingface/transformers/blob/v4.28.0/src/transformers/models/llama/modeling_llama.py
 # Copyright 2024 The vLLM team.
 
-from vllm_metax import envs
+
+
+import vllm
+import torch
+from vllm import envs, logger
+from vllm.logger import init_logger
+
+from vllm_metax import envs as mx_envs
+
+logger = init_logger(__name__)
 def import_pymcml():
     """
     Historical comments:
@@ -37,10 +46,36 @@ def import_pymcml():
     import vllm_metax.third_party.pymcml as pymcml
     return pymcml
 
+def find_nccl_library() -> str:
+    logger.info(f"[Plugin] Hooked find_nccl_library -> {find_nccl_library}")
+
+    """
+    We either use the library file specified by the `VLLM_NCCL_SO_PATH`
+    environment variable, or we find the library file brought by PyTorch.
+    After importing `torch`, `libnccl.so.2` or `librccl.so.1` can be
+    found by `ctypes` automatically.
+    """
+    so_file = mx_envs.VLLM_NCCL_SO_PATH
+
+    # manually load the nccl library
+    if so_file:
+        logger.info(
+            "Found nccl from environment variable VLLM_NCCL_SO_PATH=%s",
+            so_file)
+    else:
+        if torch.version.cuda is not None:
+            so_file = "libmccl.so"
+        elif torch.version.hip is not None:
+            so_file = "librccl.so.1"
+        else:
+            raise ValueError("NCCL only supports CUDA and ROCm backends.")
+        logger.info("Found nccl from library %s", so_file)
+    return so_file
+
 
 def vllm_version():
-    if envs.VLLM_OFFICIAL_VERSION is not None:
-        return envs.VLLM_OFFICIAL_VERSION
+    if mx_envs.VLLM_OFFICIAL_VERSION is not None:
+        return mx_envs.VLLM_OFFICIAL_VERSION
     else: 
         import vllm
         return vllm.__version__
