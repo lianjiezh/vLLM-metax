@@ -4,7 +4,7 @@
 
 import vllm
 
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm import envs
 
 ########### MLACommonImpl nessessary #############
@@ -17,6 +17,6 @@ vllm.attention.backends.mla.common.MLACommonMetadataBuilder.build = MetaxMLAComm
 vllm.attention.backends.mla.common.MLACommonImpl.__init__ = MetaxMLACommonImpl.__init__
 vllm.attention.backends.mla.common.MLACommonImpl.process_weights_after_loading = MetaxMLACommonImpl.process_weights_after_loading
 
-register_patch("vllm.attention.backends.mla.common", "MLACommonMetadataBuilder.build", MetaxMLACommonMetadataBuilder.build)
-register_patch("vllm.attention.backends.mla.common", "MLACommonImpl.__init__", MetaxMLACommonImpl.__init__)
-register_patch("vllm.attention.backends.mla.common", "MLACommonImpl.process_weights_after_loading", MetaxMLACommonImpl.process_weights_after_loading)
+
+
+

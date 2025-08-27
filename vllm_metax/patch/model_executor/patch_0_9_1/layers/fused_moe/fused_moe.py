@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -1186,12 +1186,11 @@ vllm.model_executor.layers.fused_moe.fused_moe.moe_kernel_prepare_input = moe_ke
 vllm.model_executor.layers.fused_moe.fused_moe.fused_experts_impl = fused_experts_impl
 
 
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "fused_moe_kernel_gptq_awq", fused_moe_kernel_gptq_awq)
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "fused_moe_kernel", fused_moe_kernel)
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "invoke_fused_moe_kernel", invoke_fused_moe_kernel)
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "get_moe_configs", get_moe_configs)
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "try_get_optimal_moe_config", try_get_optimal_moe_config)
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "get_config_dtype_str", get_config_dtype_str)
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "moe_kernel_prepare_input", moe_kernel_prepare_input)
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "fused_experts_impl", fused_experts_impl)
-register_patch("vllm.model_executor.layers.fused_moe.fused_moe", "get_default_config", get_default_config)
+
+
+
+
+
+
+
+

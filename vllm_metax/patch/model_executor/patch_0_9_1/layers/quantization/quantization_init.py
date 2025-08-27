@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -124,6 +124,6 @@ vllm.model_executor.layers.quantization.QuantizationMethods = QuantizationMethod
 vllm.model_executor.layers.quantization.QUANTIZATION_METHODS = QUANTIZATION_METHODS
 vllm.model_executor.layers.quantization.get_quantization_config = get_quantization_config
 
-register_patch("vllm.model_executor.layers.quantization", "QuantizationMethods", QuantizationMethods)
-register_patch("vllm.model_executor.layers.quantization", "QUANTIZATION_METHODS", QUANTIZATION_METHODS)
-register_patch("vllm.model_executor.layers.quantization", "get_quantization_config", get_quantization_config)
+
+
+

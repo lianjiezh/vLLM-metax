@@ -1,5 +1,5 @@
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -132,4 +132,3 @@ class FastIncrementalDetokenizer(BaseIncrementalDetokenizer):
 
     
 vllm.v1.engine.detokenizer.IncrementalDetokenizer = MetaxIncrementalDetokenizer
-register_patch("vllm.v1.engine.detokenizer", "IncrementalDetokenizer", MetaxIncrementalDetokenizer)

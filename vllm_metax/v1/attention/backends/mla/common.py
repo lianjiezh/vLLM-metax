@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from vllm.v1.worker.gpu_model_runner import GPUModelRunner
     
 from vllm import envs
+from vllm_metax import envs as mx_envs
 
 logger = init_logger(__name__)
 
@@ -242,7 +243,7 @@ class MetaxMLACommonImpl(MLACommonImpl[M], Generic[M]):
                 del eye
                 # standardize to (output, input)
                 return dequant_weights.T
-            return layer.weight if not envs.MACA_VLLM_USE_TN_2_NN else layer.weight.T
+            return layer.weight if not mx_envs.MACA_VLLM_USE_TN_2_NN else layer.weight.T
 
         # we currently do not have quantized bmm's which are needed for
         # `W_UV` and `W_UK_T`, we we just store fp16/bf16 copies and perform

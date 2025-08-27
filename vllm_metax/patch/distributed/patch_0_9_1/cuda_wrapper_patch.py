@@ -15,7 +15,7 @@ from vllm.distributed.device_communicators import cuda_wrapper
 import vllm.envs as envs
 from vllm.logger import init_logger
 
-from vllm_metax.patch.hook_registry import register_patch
+
 
 logger = init_logger(__name__)
 

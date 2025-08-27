@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -15,7 +15,7 @@ from vllm.distributed import (divide, get_tensor_model_parallel_rank,
 import torch
 import itertools
 from typing import Optional
-from vllm import envs
+import vllm_metax.envs as mx_envs
 from torch.nn.parameter import Parameter, UninitializedParameter
 from vllm.model_executor.layers.utils import dispatch_unquantized_gemm
 from vllm.model_executor.layers.linear import (LinearMethodBase, 
@@ -44,7 +44,7 @@ def adjust_scalar_to_fused_array(param, loaded_weight, shard_id):
         loaded_weight = loaded_weight[0]
 
     # Support gemm_tn->gemm_nn
-    if envs.MACA_VLLM_USE_TN_2_NN:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN:
         return param[shard_id], loaded_weight.t()
     else:
         return param[shard_id], loaded_weight
@@ -56,7 +56,7 @@ def UnquantizedLinearMethod_create_weights(self, layer: torch.nn.Module,
                     output_size: int, params_dtype: torch.dtype,
                     **extra_weight_attrs):
     # Support gemm_tn->gemm_nn here
-    if envs.MACA_VLLM_USE_TN_2_NN:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN:
         weight = Parameter(torch.empty(input_size_per_partition,
                                     sum(output_partition_sizes),
                                     dtype=params_dtype),
@@ -75,7 +75,7 @@ def UnquantizedLinearMethod_apply(self,
             x: torch.Tensor,
             bias: Optional[torch.Tensor] = None) -> torch.Tensor:
     # Support gemm_tn->gemm_nn here
-    if envs.MACA_VLLM_USE_TN_2_NN and x.shape[-1] == layer.weight.shape[0]:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN and x.shape[-1] == layer.weight.shape[0]:
         return dispatch_unquantized_gemm()(x, layer.weight.t(), bias)
     else:
         return dispatch_unquantized_gemm()(x, layer.weight, bias)
@@ -99,7 +99,7 @@ def ReplicatedLinear_weight_loader(self, param: Parameter, loaded_weight: torch.
 
     # Support gemm_tn->gemm_nn here
     is_quantization = not isinstance(self.quant_method, UnquantizedLinearMethod)
-    if envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
         loaded_weight = loaded_weight.t()
 
     assert param.size() == loaded_weight.size(), (
@@ -138,7 +138,7 @@ def ColumnParallelLinear_weight_loader(self, param: Parameter, loaded_weight: to
     if output_dim is not None and not is_sharded_weight:
         
         # Support gemm_tn->gemm_nn here
-        if not envs.MACA_VLLM_USE_TN_2_NN or len(param_data.shape)==1 or is_quantization:
+        if not mx_envs.MACA_VLLM_USE_TN_2_NN or len(param_data.shape)==1 or is_quantization:
             shard_size = param_data.shape[output_dim] 
         else:
             shard_size = param_data.shape[int(not(output_dim))]
@@ -153,7 +153,7 @@ def ColumnParallelLinear_weight_loader(self, param: Parameter, loaded_weight: to
         loaded_weight = loaded_weight.reshape(1)
 
     # Support gemm_tn->gemm_nn here
-    if envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
         loaded_weight = loaded_weight.t()
 
     assert param_data.shape == loaded_weight.shape
@@ -287,7 +287,7 @@ def MergedColumnParallelLinear_weight_loader(self,
                 loaded_shard_id
 
         # Support gemm_tn->gemm_nn here
-        if not envs.MACA_VLLM_USE_TN_2_NN or is_quantization:
+        if not mx_envs.MACA_VLLM_USE_TN_2_NN or is_quantization:
             param_data = param_data.narrow(output_dim, shard_offset,shard_size)
         else:
             param_data = param_data.narrow(int(not(output_dim)), shard_offset,shard_size)
@@ -316,7 +316,7 @@ def MergedColumnParallelLinear_weight_loader(self,
                 "MergedColumnParallelLinear, assume the weight is "
                 "the same for all partitions.")
     # Support gemm_tn->gemm_nn here
-    if envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
         loaded_weight = loaded_weight.t()
     assert param_data.shape == loaded_weight.shape
     param_data.copy_(loaded_weight)
@@ -478,7 +478,7 @@ def QKVParallelLinear_weight_loader(self,
                 param, orig_qkv_offsets, loaded_shard_id)
 
         # Support gemm_tn->gemm_nn here
-        if not envs.MACA_VLLM_USE_TN_2_NN or len(param_data.shape)==1 or is_quantization:
+        if not mx_envs.MACA_VLLM_USE_TN_2_NN or len(param_data.shape)==1 or is_quantization:
             param_data = param_data.narrow(output_dim, shard_offset,shard_size)
         else:
             param_data = param_data.narrow(int(not(output_dim)), shard_offset,shard_size)
@@ -513,7 +513,7 @@ def QKVParallelLinear_weight_loader(self,
                 "for all partitions.")
 
     # Support gemm_tn->gemm_nn here
-    if envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
         loaded_weight = loaded_weight.t()
 
     assert param_data.shape == loaded_weight.shape
@@ -548,7 +548,7 @@ def RowParallelLinear_weight_loader(self, param: Parameter, loaded_weight: torch
     
     if input_dim is not None and not is_sharded_weight:
         # Support gemm_tn->gemm_nn here
-        if not envs.MACA_VLLM_USE_TN_2_NN or is_quantization:
+        if not mx_envs.MACA_VLLM_USE_TN_2_NN or is_quantization:
             shard_size = param_data.shape[input_dim]
         else:
             shard_size = param_data.shape[int(not(input_dim))]
@@ -562,7 +562,7 @@ def RowParallelLinear_weight_loader(self, param: Parameter, loaded_weight: torch
         loaded_weight = loaded_weight.reshape(1)
 
     # Support gemm_tn->gemm_nn here
-    if envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN and not is_quantization:
         loaded_weight = loaded_weight.t()
     assert param_data.shape == loaded_weight.shape
     param_data.copy_(loaded_weight)
@@ -576,13 +576,13 @@ vllm.model_executor.layers.linear.MergedColumnParallelLinear.weight_loader = Mer
 vllm.model_executor.layers.linear.QKVParallelLinear.weight_loader = QKVParallelLinear_weight_loader
 vllm.model_executor.layers.linear.RowParallelLinear.weight_loader = RowParallelLinear_weight_loader
 
-register_patch("vllm.model_executor.layers.linear", "adjust_scalar_to_fused_array", adjust_scalar_to_fused_array)
-register_patch("vllm.model_executor.layers.linear", "UnquantizedLinearMethod.create_weights", UnquantizedLinearMethod_create_weights)
-register_patch("vllm.model_executor.layers.linear", "UnquantizedLinearMethod.apply", UnquantizedLinearMethod_apply)
-register_patch("vllm.model_executor.layers.linear", "ReplicatedLinear.weight_loader", ReplicatedLinear_weight_loader)
-register_patch("vllm.model_executor.layers.linear", "ColumnParallelLinear.weight_loader", ColumnParallelLinear_weight_loader)
-register_patch("vllm.model_executor.layers.linear", "MergedColumnParallelLinear.weight_loader", MergedColumnParallelLinear_weight_loader)
-register_patch("vllm.model_executor.layers.linear", "QKVParallelLinear.weight_loader", QKVParallelLinear_weight_loader)
-register_patch("vllm.model_executor.layers.linear", "RowParallelLinear.weight_loader", RowParallelLinear_weight_loader)
+
+
+
+
+
+
+
+
 
 

@@ -4,7 +4,7 @@ import vllm
 import hashlib
 
 from vllm import envs
-from vllm_metax.patch.hook_registry import register_patch
+from vllm_metax import envs as mx_envs
 
 from vllm.config import logger
 from vllm_metax.patch.model_executor.patch_0_9_1.layers.quantization.quantization_init import (QUANTIZATION_METHODS, 
@@ -32,7 +32,7 @@ def metax_compute_hash(self) -> str:
     from vllm import __version__
     vllm_factors.append(__version__)
     vllm_factors.append(envs.VLLM_USE_V1)
-    vllm_factors.append(envs.MACA_VLLM_USE_TN_2_NN)
+    vllm_factors.append(mx_envs.MACA_VLLM_USE_TN_2_NN)
 
     logger.info(f"[Plugin] Hooked compute_hash -> {metax_compute_hash}")
     
@@ -198,5 +198,5 @@ vllm.config.get_quantization_config = get_quantization_config
 vllm.config.VllmConfig.compute_hash = metax_compute_hash
 vllm.config.ModelConfig._verify_quantization = _verify_quantization
 
-register_patch("vllm.config", "VllmConfig.compute_hash", metax_compute_hash)
-register_patch("vllm.config", "ModelConfig._verify_quantization", _verify_quantization)
+
+

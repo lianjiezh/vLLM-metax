@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -111,8 +111,7 @@ vllm.model_executor.layers.quantization.awq._apply_awq_fake = _apply_awq_fake
 vllm.model_executor.layers.quantization.awq._apply_awq = _apply_awq
 vllm.model_executor.layers.quantization.awq.AWQLinearMethod.process_weights_after_loading = process_weights_after_loading
 vllm.model_executor.layers.quantization.awq.AWQLinearMethod.apply = apply
-register_patch("vllm.model_executor.layers.quantization.awq", "AWQConfig.get_supported_act_dtypes", get_supported_act_dtypes)
-register_patch("vllm.model_executor.layers.quantization.awq", "_apply_awq_fake", _apply_awq_fake)
-register_patch("vllm.model_executor.layers.quantization.awq", "_apply_awq", _apply_awq)
-register_patch("vllm.model_executor.layers.quantization.awq", "AWQLinearMethod.process_weights_after_loading", process_weights_after_loading)
-register_patch("vllm.model_executor.layers.quantization.awq", "AWQLinearMethod.apply", apply)
+
+
+
+

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
 
 import torch
 import inspect
-from vllm import envs
+import vllm_metax.envs as mx_envs
 from typing import Optional, Tuple
 from vllm.platforms import current_platform
 from torch.nn.parameter import Parameter, UninitializedParameter
@@ -79,7 +79,7 @@ def vocab_enbedding_weight_loader(self, param: Parameter, loaded_weight: torch.T
     # Copy the data. Select chunk corresponding to current shard.
     loaded_weight = loaded_weight.narrow(output_dim, start_idx, shard_size)
 
-    if envs.MACA_VLLM_USE_TN_2_NN:
+    if mx_envs.MACA_VLLM_USE_TN_2_NN:
         loaded_weight = loaded_weight.t()
         # we should padding last dimension after weight transpose
         padding_needed = max(self.num_embeddings_per_partition - loaded_weight.size(-1), 0)
@@ -105,8 +105,8 @@ vllm.model_executor.layers.vocab_parallel_embedding.get_masked_input_and_mask = 
 vllm.model_executor.layers.vocab_parallel_embedding.VocabParallelEmbedding = VocabParallelEmbedding
 vllm.model_executor.layers.vocab_parallel_embedding.ParallelLMHead = ParallelLMHead
 
-register_patch("vllm.model_executor.layers.vocab_parallel_embedding", "UnquantizedEmbeddingMethod", UnquantizedEmbeddingMethod)
-register_patch("vllm.model_executor.layers.vocab_parallel_embedding", "get_masked_input_and_mask", get_masked_input_and_mask)
-register_patch("vllm.model_executor.layers.vocab_parallel_embedding", "VocabParallelEmbedding", VocabParallelEmbedding)
-register_patch("vllm.model_executor.layers.vocab_parallel_embedding", "ParallelLMHead", ParallelLMHead)
+
+
+
+
 

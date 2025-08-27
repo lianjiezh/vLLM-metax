@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import vllm
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -273,7 +273,7 @@ vllm.attention.ops.triton_decode_attention._decode_grouped_att_m_fwd = _decode_g
 vllm.attention.ops.triton_decode_attention.decode_attention_fwd_grouped = decode_attention_fwd_grouped
 vllm.attention.ops.triton_decode_attention.decode_attention_fwd = decode_attention_fwd
 
-register_patch("vllm.attention.ops.triton_decode_attention", "_decode_att_m_fwd", _decode_att_m_fwd)
-register_patch("vllm.attention.ops.triton_decode_attention", "_decode_grouped_att_m_fwd", _decode_grouped_att_m_fwd)
-register_patch("vllm.attention.ops.triton_decode_attention", "decode_attention_fwd_grouped", decode_attention_fwd_grouped)
-register_patch("vllm.attention.ops.triton_decode_attention", "decode_attention_fwd", decode_attention_fwd)
+
+
+
+

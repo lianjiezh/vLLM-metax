@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple
 
 import torch
-from vllm import envs
+import vllm_metax.envs as mx_envs
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter, UninitializedParameter
 
@@ -30,7 +30,7 @@ class UnquantizedEmbeddingMethod(QuantizeMethodBase):
                        output_size: int, params_dtype: torch.dtype,
                        **extra_weight_attrs):
         """Create weights for embedding layer."""
-        if envs.MACA_VLLM_USE_TN_2_NN:
+        if mx_envs.MACA_VLLM_USE_TN_2_NN:
             weight = Parameter(torch.empty(input_size_per_partition,
                                        sum(output_partition_sizes),
                                        dtype=params_dtype),
@@ -48,14 +48,14 @@ class UnquantizedEmbeddingMethod(QuantizeMethodBase):
               layer: torch.nn.Module,
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
-        if envs.MACA_VLLM_USE_TN_2_NN and x.shape[-1] == layer.weight.shape[0]:
+        if mx_envs.MACA_VLLM_USE_TN_2_NN and x.shape[-1] == layer.weight.shape[0]:
             return dispatch_unquantized_gemm()(x, layer.weight.t(), bias)
         else:
             return dispatch_unquantized_gemm()(x, layer.weight, bias)
 
     def embedding(self, layer: torch.nn.Module,
                   input_: torch.Tensor) -> torch.Tensor:
-        if envs.MACA_VLLM_USE_TN_2_NN:
+        if mx_envs.MACA_VLLM_USE_TN_2_NN:
             return F.embedding(input_, layer.weight.t())
         else:
             return F.embedding(input_, layer.weight)
@@ -402,7 +402,7 @@ class VocabParallelEmbedding(torch.nn.Module):
         # Copy the data. Select chunk corresponding to current shard.
         loaded_weight = loaded_weight.narrow(output_dim, start_idx, shard_size)
 
-        if envs.MACA_VLLM_USE_TN_2_NN:
+        if mx_envs.MACA_VLLM_USE_TN_2_NN:
             loaded_weight = loaded_weight.t()
             # we should padding last dimension after weight transpose
             padding_needed = max(self.num_embeddings_per_partition - loaded_weight.size(-1), 0)

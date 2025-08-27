@@ -2,7 +2,7 @@ import vllm
 import torch
 from typing import Optional
 from vllm_metax import _custom_ops as ops
-from vllm_metax.patch.hook_registry import register_patch
+
 from vllm.logger import init_logger
 from vllm.model_executor.layers.quantization.utils.int8_utils import per_token_group_quant_int8
 from vllm.utils import cdiv
@@ -42,4 +42,3 @@ def _int8_quantize(
     return A, A_scale
 
 vllm.model_executor.layers.fused_moe.utils._int8_quantize = _int8_quantize
-register_patch("vllm.model_executor.layers.fused_moe.utils", "_int8_quantize", _int8_quantize)
