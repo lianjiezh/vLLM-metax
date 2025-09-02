@@ -2,23 +2,26 @@
 
 The MXMACA backend plugin for vLLM.
 
-## Building Environments
+## Prepare Building Environments
 
 vllm-metax plugin needs to be built with corresponding **Maca Toolkits**.
 
-### Maunually
+### manually
 
 Checking and install all the vLLM environment requirements [here](https://developer.metax-tech.com/softnova/category?package_kind=AI&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85&ai_frame=vllm&ai_label=vLLM):
 
-You could update *Maca Toolkits* separately by:
+<img width="1788" height="183" alt="image" src="https://github.com/user-attachments/assets/df1c30bd-e2f9-41a9-a1b2-256291edc618" />
+
+You could also update *Maca Toolkits* separately with specific version by:
 
 - *MetaX Driver*: [*online*](https://developer.metax-tech.com/softnova/download?package_kind=Driver&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85) or [*offline*](https://developer.metax-tech.com/softnova/download?package_kind=Driver&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85)
 
 - *Maca SDK*: [*online*](https://developer.metax-tech.com/softnova/download?package_kind=SDK&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85) or [*offline*](https://developer.metax-tech.com/softnova/download?package_kind=SDK&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85)
 
-### Or... docker images
+### or... docker images
 
 Directly using docker images released on [*MetaX Develop Community*](https://developer.metax-tech.com/softnova/docker).
+All the required components are pre-installed in docker image.
 
 > Note: You may need to search docker images for `vllm` distribution.
 
@@ -32,9 +35,7 @@ Directly using docker images released on [*MetaX Develop Community*](https://dev
 
 > Note: All the vllm tests are based on the related maca version. Using incorresponding version of maca for vllm may cause unexpected bugs or errors. This is not garanteed.
 
-## Installation
-
-Currently we only support build from source:
+## Install plugin
 
 ### install vllm
 ```bash
@@ -42,6 +43,8 @@ pip install vllm==0.10.1.1 --no-deps
 ```
 
 ### install vllm-metax
+
+> Currently we only support build from source.
 
 **clone repository**:
 ```bash
@@ -58,7 +61,7 @@ wget https://developer.download.nvidia.com/compute/cuda/11.6.0/local_installers/
     rm cuda_11.6.0_510.39.01_linux.run
 ```
 
-**prepare environments**:
+**setup env variables**:
 
 ```
 # setup MACA path
@@ -111,4 +114,5 @@ pip install . -v --no-build-isolation
 
 ```bash
 $ vllm_metax_init
+
 ```
