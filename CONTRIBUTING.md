@@ -1,3 +1,3 @@
-# Contributing to vLLM
+# Contributing to vLLM-metax
 
-You may find information about contributing to vLLM on [docs.vllm.ai](https://docs.vllm.ai/en/latest/contributing/overview.html).
+Just welcome!
