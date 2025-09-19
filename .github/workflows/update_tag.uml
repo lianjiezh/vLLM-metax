@@ -1,0 +1,39 @@
+name: Sync Branch to Tag
+
+on:
+  push:
+    branches:
+      - "v*-dev"
+      - "v*-release"
+
+jobs:
+  sync-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract clean tag from branch name
+        run: |
+          BRANCH_NAME="${GITHUB_REF##*/}"   # e.g. v1.2.4-dev
+          CLEAN_TAG=$(echo "$BRANCH_NAME" | sed -E 's/-(dev|release)$//')  # -> v1.2.4
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "TAG_NAME=$CLEAN_TAG" >> $GITHUB_ENV
+          echo "Branch: $BRANCH_NAME -> Tag: $CLEAN_TAG"
+
+      - name: Create or update Git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git tag -f "${TAG_NAME}"
+          git push origin "${TAG_NAME}" --force
+
+      - name: Create GitHub Release (for release branches only)
+        if: endsWith(env.BRANCH_NAME, '-release')
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: Release ${{ env.TAG_NAME }}
+          draft: false
+          prerelease: false
