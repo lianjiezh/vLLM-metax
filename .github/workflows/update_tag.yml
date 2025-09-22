@@ -31,7 +31,7 @@ jobs:
 
       - name: Create GitHub Release (for release branches only)
         if: endsWith(env.BRANCH_NAME, '-release')
-          uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: Release ${{ env.TAG_NAME }}
