@@ -331,8 +331,6 @@ class MacaPlatformBase(Platform):
                 )
                 return FLEX_ATTENTION_V1
 
-            assert not is_default_backend_supported
-
         # Backends for V0 engine
         else:
             raise AssertionError(
