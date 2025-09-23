@@ -33,6 +33,12 @@ jobs:
                     sudo apt install git -y
                     pip install uv
 
+            -   name: Patch Ray
+                run: |
+                    pip install ray==2.48.0
+                    cd /workspace/ray-patch
+                    cp -r ray/*  /opt/conda/lib/python3.10/site-packages/ray/
+
             -   name: Checkout vllm repo
                 uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
                 with:
