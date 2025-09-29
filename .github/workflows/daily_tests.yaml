@@ -23,8 +23,16 @@ jobs:
             fail-fast: false
             max-parallel: 2
             matrix:
-                os: [vllm-metax-runner-set]
-                vllm_version: [v0.10.2, main]
+                include:
+                    -   os: vllm-metax-runner-set
+                        vllm_version: main
+                        vllm_metax_version: master
+                    -   os: vllm-metax-runner-set
+                        vllm_version: v0.10.2
+                        vllm_metax_version: v0.10.2
+                    -   os: vllm-metax-runner-set
+                        vllm_version: v0.10.2rc3
+                        vllm_metax_version: v0.10.2
         runs-on: ${{ matrix.os }}
         steps:
             -   name: Install base packages
