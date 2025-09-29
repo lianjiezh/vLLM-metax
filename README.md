@@ -32,27 +32,29 @@ All the required components are pre-installed in docker image.
 |v0.8.5          |maca2.33.1.13 | vllm:maca.ai2.33.1.13-torch2.6-py310-ubuntu22.04-amd64 |
 |v0.9.1          |maca3.0.0.5   | vllm:maca.ai3.0.0.5-torch2.6-py310-ubuntu22.04-amd64 |
 |v0.10.1.1 (dev only)|maca3.0.0.5(dev only)| vllm:maca.ai3.0.0.5-torch2.6-py310-ubuntu22.04-amd64 (dev only)|
-|v0.10.2(dev only)|maca3.0.0.5(dev only)| vllm:maca.ai3.0.0.5-torch2.6-py310-ubuntu22.04-amd64 (dev only)|
+|v0.10.2(dev only)|maca3.1.0.x(dev only)| N/A |
+|master|maca3.1.0.x(dev only)| N/A|
+
 
 > Note: All the vllm tests are based on the related maca version. Using incorresponding version of maca for vllm may cause unexpected bugs or errors. This is not garanteed.
 
 ## Install plugin
 
+Currently we only support building in docker.
+> if build in host, you need to manually install all the dependencies and package requirements first.
+
 ### install vllm
+**clone repository and install from source**:
 ```bash
-pip install vllm==0.10.2 --no-deps
+# clone vllm-metax
+git clone  --depth 1 --branch v0.10.2 https://github.com/vllm-project/vllm && cd vllm
+
+# install build requirements
+pip install -r requirements/build.txt
+VLLM_TARGET_DEVICE=empty pip install -v . --no-build-isolation
 ```
 
 ### install vllm-metax
-
-> Currently we only support build from source.
-
-**clone repository**:
-```bash
-# clone vllm-metax
-git clone  --depth 1 --branch [branch-name] [vllm-metax-repo-url] && cd vllm-metax
-```
-
 **install cuda toolkit**:
 
 ```bash
@@ -66,12 +68,11 @@ wget https://developer.download.nvidia.com/compute/cuda/11.6.0/local_installers/
 
 ```
 # setup MACA path
-DEFAULT_DIR="/opt/maca"
-export MACA_PATH=${1:-$DEFAULT_DIR}
+export MACA_PATH="/opt/maca"
 
 # setup CUDA && cu-bridge
-export CUDA_PATH=/usr/local/cuda
-export CUCC_PATH=${MACA_PATH}/tools/cu-bridge
+export CUDA_PATH="/usr/local/cuda"
+export CUCC_PATH="${MACA_PATH}/tools/cu-bridge"
 
 # update PATH
 export PATH=${CUDA_PATH}/bin:${MACA_PATH}/mxgpu_llvm/bin:${MACA_PATH}/bin:${CUCC_PATH}/tools:${CUCC_PATH}/bin:${PATH}
@@ -80,6 +81,11 @@ export LD_LIBRARY_PATH=${MACA_PATH}/lib:${MACA_PATH}/ompi/lib:${MACA_PATH}/mxgpu
 export VLLM_INSTALL_PUNICA_KERNELS=1
 ```
 
+**clone repository**:
+```bash
+# clone vllm-metax
+git clone  --depth 1 --branch [branch-name] [vllm-metax-repo-url] && cd vllm-metax
+```
 There are two ways to build the plugin:
 
 - if you want to build the binary distribution :
@@ -96,6 +102,8 @@ pip install dist/*.whl
 - Or, you could *build and install* the plugin via `pip`:
 
 ```bash
+# install requirements for building
+pip install -r requirements/build.txt
 # since we use our local pytorch, add the --no-build-isolation flag 
 # to avoid the conflict with the official pytorch
 pip install . -v --no-build-isolation
@@ -113,5 +121,4 @@ pip install . -v --no-build-isolation
 
 ```bash
 $ vllm_metax_init
-
 ```
