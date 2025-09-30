@@ -406,11 +406,27 @@ TORCH_LIBRARY_EXPAND(CONCAT(TORCH_EXTENSION_NAME, _cache_ops), cache_ops) {
       "                     Tensor scale) -> ()");
   cache_ops.impl("concat_and_cache_mla", torch::kCUDA, &concat_and_cache_mla);
 
-  // Gather cache blocks from src_cache to dst.
+  // Convert the key and value cache to fp8 data type.
   cache_ops.def(
-      "gather_cache(Tensor src_cache, Tensor! dst, Tensor block_table, "
+      "convert_fp8(Tensor! dst_cache, Tensor src_cache, float scale, "
+      "str kv_cache_dtype) -> ()");
+  cache_ops.impl("convert_fp8", torch::kCUDA, &convert_fp8);
+
+  // Gather cache blocks from src_cache to dst, dequantizing from
+  // src_cache's dtype to dst's dtype if necessary.
+  cache_ops.def(
+      "gather_and_maybe_dequant_cache(Tensor src_cache, Tensor! dst, "
+      "                               Tensor block_table, Tensor cu_seq_lens, "
+      "                               int batch_size, "
+      "                               str kv_cache_dtype, "
+      "                               Tensor scale, Tensor? seq_starts) -> ()");
+  cache_ops.impl("gather_and_maybe_dequant_cache", torch::kCUDA,
+                 &gather_and_maybe_dequant_cache);
+
+  cache_ops.def(
+      "cp_gather_cache(Tensor src_cache, Tensor! dst, Tensor block_table, "
       "Tensor cu_seq_lens, int batch_size, Tensor? seq_starts) -> ()");
-  cache_ops.impl("gather_cache", torch::kCUDA, &gather_cache);
+  cache_ops.impl("cp_gather_cache", torch::kCUDA, &cp_gather_cache);
 }
 
 TORCH_LIBRARY_EXPAND(CONCAT(TORCH_EXTENSION_NAME, _cuda_utils), cuda_utils) {
