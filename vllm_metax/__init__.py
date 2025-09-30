@@ -93,6 +93,7 @@ def collect_env() -> None:
 
 ########### platform plugin ###########
 def register():
+    register_patch()
     """Register the METAX platform."""
     return "vllm_metax.platform.MacaPlatform"
 
