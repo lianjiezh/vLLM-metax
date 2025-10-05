@@ -235,10 +235,20 @@ class MacaPlatformBase(Platform):
     @classmethod
     def get_attn_backend_cls(cls, selected_backend, head_size, dtype,
                              kv_cache_dtype, block_size, use_v1, use_mla,
-                             has_sink) -> str:
+                             has_sink, use_sparse) -> str:
         if use_mla:
-            from vllm_metax.attention.ops.flashmla import (
-                is_flashmla_supported)
+            if not use_v1:
+                raise RuntimeError(
+                    "MLA attention backends require the V1 engine. "
+                    "Set VLLM_USE_V1=1 to enable them.")
+
+            if use_sparse:
+                logger.info_once("Using Sparse MLA backend on V1 engine.")
+                return ("vllm_metax.v1.attention.backends.mla.flashmla_sparse."
+                        "MacaFlashMLASparseBackend")
+
+            from vllm_metax.attention.ops.flashmla import is_flashmla_supported
+
             use_cutlassmla = _Backend.CUTLASS_MLA or (
                 cls.is_device_capability(100) and selected_backend is None
                 and block_size == 128)

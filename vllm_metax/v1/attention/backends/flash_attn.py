@@ -2,23 +2,28 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Attention layer with FlashAttention."""
 from dataclasses import dataclass
-from typing import Optional, ClassVar
+from typing import Optional
 
 import numpy as np
 import torch
 
+from vllm import envs
 from vllm import _custom_ops as ops
 from vllm.attention.backends.abstract import (AttentionBackend, AttentionImpl,
                                               AttentionMetadata, AttentionType,
                                               is_quantized_kv_cache)
 from vllm.attention.layer import Attention
 from vllm.attention.ops.merge_attn_states import merge_attn_states
-from vllm_metax.attention.utils.fa_utils import (flash_attn_supports_fp8,
-                                                 get_flash_attn_version)
+from vllm_metax.attention.utils.fa_utils import (
+    flash_attn_supports_fp8, get_flash_attn_version,
+    is_flash_attn_varlen_func_available)
 
-from flash_attn import flash_attn_varlen_func, flash_attn_with_kvcache
+if is_flash_attn_varlen_func_available():
+    from vllm_metax.attention.utils.fa_utils import (flash_attn_varlen_func,
+                                                     get_scheduler_metadata,
+                                                     reshape_and_cache_flash,
+                                                     flash_attn_with_kvcache)
 
-reshape_and_cache_flash = ops.reshape_and_cache_flash
 from vllm.config import VllmConfig, get_layers_from_vllm_config
 from vllm.logger import init_logger
 from vllm.utils import cdiv
@@ -33,13 +38,11 @@ from vllm.v1.kv_cache_interface import AttentionSpec
 
 logger = init_logger(__name__)
 
-# NOTE(woosuk): This is an arbitrary number. Tune it if needed.
-_DEFAULT_MAX_NUM_SPLITS_FOR_CUDA_GRAPH = 16
-
 
 class MacaFlashAttentionBackend(AttentionBackend):
 
     accept_output_buffer: bool = True
+    supports_quant_query_input: bool = True
 
     @classmethod
     def get_supported_dtypes(cls) -> list[torch.dtype]:
@@ -62,7 +65,7 @@ class MacaFlashAttentionBackend(AttentionBackend):
 
     @staticmethod
     def get_name() -> str:
-        return "FLASH_ATTN_VLLM_V1"
+        return "FLASH_ATTN"
 
     @staticmethod
     def get_impl_cls() -> type["FlashAttentionImpl"]:
@@ -82,6 +85,7 @@ class MacaFlashAttentionBackend(AttentionBackend):
         block_size: int,
         num_kv_heads: int,
         head_size: int,
+        cache_dtype_str: str = "auto",
     ) -> tuple[int, ...]:
         if block_size % 16 != 0:
             raise ValueError("Block size must be a multiple of 16.")
@@ -192,8 +196,6 @@ class FlashAttentionMetadataBuilder(
     cudagraph_support = AttentionCGSupport.ALWAYS \
         if get_flash_attn_version() == 3 else AttentionCGSupport.UNIFORM_BATCH
 
-    reorder_batch_threshold: ClassVar[int] = 1
-
     def __init__(self, kv_cache_spec: AttentionSpec, layer_names: list[str],
                  vllm_config: VllmConfig, device: torch.device):
         super().__init__(kv_cache_spec, layer_names, vllm_config, device)
@@ -215,10 +217,9 @@ class FlashAttentionMetadataBuilder(
 
         self.use_full_cuda_graph = \
             self.compilation_config.cudagraph_mode.has_full_cudagraphs()
+        self.max_cudagraph_size = self.compilation_config.max_capture_size
 
         if self.use_full_cuda_graph and self.aot_schedule:
-            self.max_cudagraph_size = self.compilation_config.max_capture_size
-
             if self.max_cudagraph_size > 992:
                 # This condition derives from FA3's internal heuristic.
                 # TODO(woosuk): Support larger cudagraph sizes.
@@ -234,18 +235,12 @@ class FlashAttentionMetadataBuilder(
             # When using cuda graph, we need to set the upper bound of the
             # number of splits so that large enough intermediate buffers are
             # pre-allocated during capture.
-            self.max_num_splits = _DEFAULT_MAX_NUM_SPLITS_FOR_CUDA_GRAPH
+            self.max_num_splits = (
+                envs.VLLM_FLASH_ATTN_MAX_NUM_SPLITS_FOR_CUDA_GRAPH)
 
         # Sliding window size to be used with the AOT scheduler will be
         # populated on first build() call.
         self.aot_sliding_window: Optional[tuple[int, int]] = None
-
-    # TODO: Metax Modify
-    def reorder_batch(self, input_batch: "InputBatch",
-                      scheduler_output: "SchedulerOutput") -> bool:
-        return reorder_batch_to_split_decodes_and_prefills(input_batch,
-                                                           scheduler_output,
-                                                           decode_threshold=1)
 
     def build(self,
               common_prefix_len: int,
@@ -293,6 +288,15 @@ class FlashAttentionMetadataBuilder(
                 elif len(sliding_window_configs) > 1:
                     self.aot_schedule = False
                     aot_schedule = False
+
+        max_num_splits = 0  # 0 means use FA3's heuristics, not CG compatible
+        if self.use_full_cuda_graph and \
+            num_actual_tokens <= self.max_cudagraph_size:
+            # NOTE(woosuk): Setting num_splits > 1 may increase the memory
+            # usage, because the intermediate buffers of size [num_splits,
+            # num_heads, num_tokens, head_size] are allocated. Therefore,
+            # we only set num_splits when using cuda graphs.
+            max_num_splits = self.max_num_splits
 
         # /------------------------  Metax Modification -------------------------\
         # For handling prefill decode split
@@ -350,7 +354,7 @@ class FlashAttentionMetadataBuilder(
                     page_size=self.block_size,
                     causal=causal,
                     window_size=self.aot_sliding_window,
-                    num_splits=self.max_num_splits,
+                    num_splits=max_num_splits,
                 )
             return None
 
@@ -391,7 +395,6 @@ class FlashAttentionMetadataBuilder(
                                           max_seq_len=max_seq_len,
                                           causal=causal)
         # For FA3 + full cudagraph
-        max_num_splits = 0
         if self.use_full_cuda_graph and scheduler_metadata is not None:
             n = scheduler_metadata.shape[0]
             self.scheduler_metadata[:n] = scheduler_metadata
@@ -401,13 +404,6 @@ class FlashAttentionMetadataBuilder(
             # output buffer.
             self.scheduler_metadata[n:] = 0
             scheduler_metadata = self.scheduler_metadata[:n]
-
-            if num_actual_tokens <= self.max_cudagraph_size:
-                # NOTE(woosuk): Setting num_splits > 1 may increase the memory
-                # usage, because the intermediate buffers of size [num_splits,
-                # num_heads, num_tokens, head_size] are allocated. Therefore,
-                # we only set num_splits when using cuda graphs.
-                max_num_splits = self.max_num_splits
 
         attn_metadata = FlashAttentionMetadata(
             num_actual_tokens=num_actual_tokens,
@@ -590,16 +586,11 @@ class FlashAttentionImpl(AttentionImpl):
             )
 
         if self.kv_cache_dtype.startswith("fp8"):
+            # queries are quantized in the attention layer
             dtype = MacaFlashAttentionBackend.get_fp8_dtype_for_flashattn(
                 self.kv_cache_dtype)
             key_cache = key_cache.view(dtype)
             value_cache = value_cache.view(dtype)
-            num_tokens, num_heads, head_size = query.shape
-            query, _ = ops.scaled_fp8_quant(
-                query.reshape(
-                    (num_tokens, num_heads * head_size)).contiguous(),
-                layer._q_scale)
-            query = query.reshape((num_tokens, num_heads, head_size))
 
         # ┌------------------------  Metax Modification -------------------------┐
         # For handling prefill decode split
@@ -621,7 +612,7 @@ class FlashAttentionImpl(AttentionImpl):
                            max_seqlen_q=attn_metadata.max_query_len,
                            max_seqlen_k=attn_metadata.prefill_max_seq_len,
                            softmax_scale=self.scale,
-                           causal=True,
+                           causal=attn_metadata.causal,
                            window_size=self.sliding_window,
                            alibi_slopes=self.alibi_slopes,
                            softcap=self.logits_soft_cap,
