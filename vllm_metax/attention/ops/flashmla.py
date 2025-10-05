@@ -57,9 +57,10 @@ def get_mla_metadata(
             (num_sm_parts, TileSchedulerMetaDataSize), dtype torch.int32.
     - num_splits: (batch_size + 1), dtype torch.int32.
     """
-    return torch.ops._flashmla_C.get_mla_decoding_metadata(
-        cache_seqlens, num_q_tokens_per_head_k, num_heads_k, num_heads_q,
-        is_fp8_kvcache, topk)
+    # /------------------------  Metax Modification -------------------------\
+    return flash_mla.flash_mla_interface.get_mla_metadata(
+        cache_seqlens, num_q_tokens_per_head_k, num_heads_k)
+    # \------------------------- Metax Modification -------------------------/
 
 
 def flash_mla_with_kvcache(
