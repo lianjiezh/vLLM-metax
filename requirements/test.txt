@@ -994,7 +994,7 @@ starlette-testclient==0.4.1
     # via schemathesis
 statsmodels==0.14.4
     # via genai-perf
-sympy==1.13.3
+sympy==1.13.1
     # via
     #   einx
     #   torch
@@ -1047,8 +1047,9 @@ tomli==2.2.1
     #   schemathesis
 tomli-w==1.2.0
     # via schemathesis
-torch==2.8.0+cpu
+torch==2.6.0+cpu
     # via
+    #   -r requirements/test.in
     #   accelerate
     #   bitsandbytes
     #   efficientnet-pytorch
@@ -1075,7 +1076,7 @@ torch==2.8.0+cpu
     #   torchvision
     #   vector-quantize-pytorch
     #   vocos
-torchaudio==2.8.0+cpu
+torchaudio==2.6.0+cpu
     # via
     #   encodec
     #   vocos
@@ -1087,7 +1088,7 @@ torchmetrics==1.7.4
     #   pytorch-lightning
     #   terratorch
     #   torchgeo
-torchvision==0.23.0+cpu
+torchvision==0.21.0+cpu
     # via
     #   lightly
     #   open-clip-torch
