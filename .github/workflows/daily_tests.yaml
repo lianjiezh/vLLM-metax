@@ -30,9 +30,6 @@ jobs:
                     -   os: vllm-metax-runner-set
                         vllm_version: v0.10.2
                         vllm_metax_version: v0.10.2
-                    -   os: vllm-metax-runner-set
-                        vllm_version: v0.10.2rc3
-                        vllm_metax_version: v0.10.2
         runs-on: ${{ matrix.os }}
         steps:
             -   name: Install base packages
@@ -102,6 +99,9 @@ jobs:
                     pip install -r requirements/build.txt
                     pip install . --no-build-isolation -v
 
+            -   name: Install test requirements
+                run: |
+                    pip install -r requirements/test.txt
 
             -   name: Run e2e tests
                 env:
