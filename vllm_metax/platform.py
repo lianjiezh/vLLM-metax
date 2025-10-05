@@ -92,16 +92,6 @@ class MacaPlatformBase(Platform):
         return True
 
     @classmethod
-    def is_async_output_supported(cls, enforce_eager: Optional[bool]) -> bool:
-        if enforce_eager and not envs.VLLM_USE_V1:
-            logger.warning(
-                "To see benefits of async output processing, enable CUDA "
-                "graph. Since, enforce-eager is enabled, async output "
-                "processor cannot be used")
-            return False
-        return True
-
-    @classmethod
     def is_fully_connected(cls, device_ids: list[int]) -> bool:
         raise NotImplementedError
 
@@ -139,12 +129,15 @@ class MacaPlatformBase(Platform):
         # TODO(lucas): handle this more gracefully
         # Note: model_config may be None during testing
         if model_config is not None and model_config.use_mla:
+            use_sparse = hasattr(vllm_config.model_config.hf_config,
+                                 "index_topk")
             # If `VLLM_ATTENTION_BACKEND` is not set and we are using MLA,
             # then we default to FlashMLA backend for non-blackwell GPUs,
             # else we default to CutlassMLA. For each case, we force the
             # required block_size.
             use_flashmla = False
             use_cutlass_mla = False
+            use_flashinfer_mla = False
 
             if envs.VLLM_ATTENTION_BACKEND is None:
                 # Default case
@@ -175,7 +168,12 @@ class MacaPlatformBase(Platform):
                 cache_config.block_size = 128
                 logger.info("Forcing kv cache block size to 128 for "
                             "CUTLASS_MLA backend.")
-
+            # TODO(Chen): remove this hacky code
+            if use_sparse and cache_config.block_size != 64:
+                cache_config.block_size = 64
+                logger.info(
+                    "Forcing kv cache block size to 64 for FlashMLASparse "
+                    "backend.")
         # lazy import to avoid circular import
         from vllm.config import CUDAGraphMode
 
@@ -183,15 +181,18 @@ class MacaPlatformBase(Platform):
         if (envs.VLLM_ALL2ALL_BACKEND == "deepep_high_throughput"
                 and parallel_config.data_parallel_size > 1
                 and compilation_config.cudagraph_mode != CUDAGraphMode.NONE):
+            # TODO: Piecewise Cuda graph might be enabled
+            # if torch compile cache key issue fixed
+            # See https://github.com/vllm-project/vllm/pull/25093
             logger.info(
-                "Data Parallel: disabling cudagraphs since DP "
-                "with DeepEP high-throughput kernels are not CUDA Graph "
-                "compatible. The DeepEP low-latency kernels are CUDA Graph "
-                "compatible. Set the all_to_all backend to deepep_low_latency "
-                "to use those kernels instead.")
+                "WideEP: Disabling CUDA Graphs since DeepEP high-throughput "
+                "kernels are optimized for prefill and are incompatible with "
+                "CUDA Graphs. "
+                "In order to use CUDA Graphs for decode-optimized workloads, "
+                "set VLLM_ALL2ALL_BACKEND to another option, such as "
+                "deepep_low_latency, pplx, or allgather_reducescatter.")
             compilation_config.cudagraph_mode = CUDAGraphMode.NONE
-            if model_config is not None:
-                model_config.enforce_eager = True
+
 
         if vllm_config.model_config is not None and \
             not vllm_config.model_config.enforce_eager and \
@@ -241,9 +242,8 @@ class MacaPlatformBase(Platform):
             use_cutlassmla = _Backend.CUTLASS_MLA or (
                 cls.is_device_capability(100) and selected_backend is None
                 and block_size == 128)
-            use_flashmla = selected_backend in [
-                _Backend.FLASHMLA, _Backend.FLASHMLA
-            ] or (selected_backend is None and is_flashmla_supported()[0])
+            use_flashmla = selected_backend == _Backend.FLASHMLA or (
+                selected_backend is None and is_flashmla_supported()[0])
             use_triton = selected_backend == _Backend.TRITON_MLA or (
                 selected_backend is None)
 
@@ -277,8 +277,8 @@ class MacaPlatformBase(Platform):
             assert not use_mla
             FLASHINFER_V1 = "vllm_metax.v1.attention.backends.flashinfer.MacaFlashInferBackend"  # noqa: E501
             FLEX_ATTENTION_V1 = "vllm_metax.v1.attention.backends.flex_attention.FlexAttentionBackend"  # noqa: E501
+            TRITON_ATTN = "vllm_metax.v1.attention.backends.triton_attn.MacaTritonAttentionBackend"  # noqa: E501
             FLASH_ATTN_V1 = "vllm_metax.v1.attention.backends.flash_attn.MacaFlashAttentionBackend"  # noqa: E501
-            TRITON_ATTN_VLLM_V1 = "vllm_metax.v1.attention.backends.triton_attn.MacaTritonAttentionBackend"  # noqa: E501
             TREE_ATTN_V1 = "vllm_metax.v1.attention.backends.tree_attn.TreeAttentionBackend"  # noqa: E501
 
             if selected_backend == _Backend.FLASHINFER:
@@ -290,9 +290,9 @@ class MacaPlatformBase(Platform):
             elif selected_backend == _Backend.FLEX_ATTENTION:
                 logger.info_once("Using FlexAttention backend on V1 engine.")
                 return FLEX_ATTENTION_V1
-            elif selected_backend == _Backend.TRITON_ATTN_VLLM_V1:
+            elif selected_backend == _Backend.TRITON_ATTN:
                 logger.info_once("Using Triton backend on V1 engine.")
-                return TRITON_ATTN_VLLM_V1
+                return TRITON_ATTN
             elif selected_backend == _Backend.FLASH_ATTN:
                 logger.info_once("Using Flash Attention backend on V1 engine.")
                 return FLASH_ATTN_V1
@@ -322,7 +322,7 @@ class MacaPlatformBase(Platform):
                 return FLASHINFER_V1
             if has_sink:
                 logger.info_once("Using Triton backend on V1 engine.")
-                return TRITON_ATTN_VLLM_V1
+                return TRITON_ATTN
 
             use_flex_attention_reason = {}
             if not is_default_backend_supported.head_size:
@@ -337,10 +337,9 @@ class MacaPlatformBase(Platform):
             )
             return FLEX_ATTENTION_V1
 
-        # Backends for V0 engine
-        else:
-            raise AssertionError(
-                "V0 engine is deprecated on Maca. Please switch to V1.")
+        raise RuntimeError(
+            "V0 attention backends have been removed. Set VLLM_USE_V1=1 "
+            "to select a supported backend.")
 
     @classmethod
     def get_punica_wrapper(cls) -> str:
@@ -353,10 +352,6 @@ class MacaPlatformBase(Platform):
     @classmethod
     def supports_fp8(cls) -> bool:
         return False
-
-    @classmethod
-    def supports_v1(cls, model_config: "ModelConfig") -> bool:
-        return True
 
     @classmethod
     def use_custom_allreduce(cls) -> bool:
@@ -572,3 +567,4 @@ finally:
         pymxml.nvmlShutdown()
 
 MacaPlatform = MxmlPlatform if mxml_available else NonMxmlMetaxPlatform
+MacaPlatform.log_warnings()
