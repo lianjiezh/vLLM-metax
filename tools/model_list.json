@@ -1,0 +1,53 @@
+{
+    "common_env": {
+        "MACA_SMALL_PAGESIZE_ENABLE": "1",
+        "TRITON_ENABLE_MACA_OPT_MOVE_DOT_OPERANDS_OUT_LOOP": "1",
+        "TRITON_ENABLE_MACA_CHAIN_DOT_OPT": "1",
+        "RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES": "1",
+        "MACA_DIRECT_DISPATCH": "1"
+    },
+    "w8a8_env": {
+        "TRITON_DISABLE_MACA_OPT_MMA_PREFETCH": "1",
+        "TRITON_ENABLE_MACA_COMPILER_INT8_OPT": "True",
+        "TRITON_ENABLE_ELEMENTWISE_PK_FMA_OPT": "True"
+    },
+    "tasks":[
+        {
+            "id": "Qwen3-0.6B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/home/jovyan/models/Qwen/Qwen3-0.6B/",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "Qwen3-30B-A3B_w8a8",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/home/jovyan/models/Qwen/Qwen3-30B-A3B_w8a8",
+            "gpu_count": 4,
+            "timeout": 600
+        },
+        {
+            "id": "Qwen3-32B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/home/jovyan/models/Qwen/Qwen3_32B",
+            "gpu_count": 4,
+            "timeout": 600
+        },
+        {
+            "id": "Qwen3-32B.w8a8",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/home/jovyan/models/Qwen/Qwen3-32B.w8a8/",
+            "gpu_count": 4,
+            "timeout": 600,
+            "ext_env": "w8a8_env"
+        },
+        {
+            "id": "Qwen3-235B-A22B_w8a8",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 8   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/home/jovyan/models/Qwen/Qwen3-235B-A22B_w8a8",
+            "gpu_count": 8,
+            "timeout": 1200,
+            "ext_env": "w8a8_env"
+        }
+    ]
+}
