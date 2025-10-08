@@ -399,6 +399,7 @@ class GPUScheduler:
             w8a8_env = json_data.get('w8a8_env', {})
             tasks = json_data.get('tasks', [])
             if isinstance(tasks, list):
+                tasks.sort(key=lambda x: x.get('gpu_count', 0))
                 port = 8000
                 for task in tasks:
                     task['port'] = port

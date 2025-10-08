@@ -1,0 +1,272 @@
+{
+    "common_env": {
+        "MACA_SMALL_PAGESIZE_ENABLE": "1",
+        "TRITON_ENABLE_MACA_OPT_MOVE_DOT_OPERANDS_OUT_LOOP": "1",
+        "TRITON_ENABLE_MACA_CHAIN_DOT_OPT": "1",
+        "RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES": "1",
+        "MACA_DIRECT_DISPATCH": "1"
+    },
+    "w8a8_env": {
+        "TRITON_DISABLE_MACA_OPT_MMA_PREFETCH": "1",
+        "TRITON_ENABLE_MACA_COMPILER_INT8_OPT": "True",
+        "TRITON_ENABLE_ELEMENTWISE_PK_FMA_OPT": "True"
+    },
+    "tasks":[
+        {
+            "id": "DeepSeek-R1-Distill-Llama-8B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/DeepSeek/DeepSeek-R1-Distill-Llama-8B",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "DeepSeek-R1-Distill-Qwen-7B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/DeepSeek/DeepSeek-R1-Distill-Qwen-7B/",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "DeepSeek-R1-Distill-Qwen-14B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/DeepSeek/DeepSeek-R1-Distill-Qwen-14B/",
+            "gpu_count": 1,
+            "timeout": 600
+        },
+        {
+            "id": "DeepSeek-R1-Distill-Qwen-32B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/DeepSeek/DeepSeek-R1-Distill-Qwen-32B/",
+            "gpu_count": 4,
+            "timeout": 600
+        },
+        {
+            "id": "DeepSeek-R1-Distill-Llama-70B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/DeepSeek/DeepSeek-R1-Distill-Llama-70B/",
+            "gpu_count": 4,
+            "timeout": 1200
+        },
+        {
+            "id": "DeepSeek-V2-Lite",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/ssd_models/llm/DeepSeek/DeepSeek-V1-Lite",
+            "gpu_count": 1,
+            "timeout": 600
+        },
+        {
+            "id": "DeepSeek-R1-L12-BF16",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 8   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/ssd_models/llm/DeepSeek/DeepSeek-R1-L12-BF16",
+            "gpu_count": 8,
+            "timeout": 1200
+        }, 
+        {
+            "id": "DeepSeek-R1-W8A8-L4-DP4TP2",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 2 -dp 4   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/DeepSeek/DeepSeek-R1-BF16-L4-W8A8",
+            "gpu_count": 8,
+            "timeout": 1200,
+            "ext_env": "w8a8_env"
+        },
+        {
+            "id": "DeepSeek-R1-awq",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 4096  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 --quantization moe_wna16 -tp 8 --dtype float16  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/ssd_models/llm/DeepSeek/DeepSeek-R1-awq",
+            "gpu_count": 8,
+            "timeout": 1800
+        },
+        {
+            "id": "QwQ-32B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/QwQ-32B-Preview/",
+            "gpu_count": 4,
+            "timeout": 1200
+        },
+        {
+            "id": "Qwen2.5_72b",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen2.5-72B-Instruct/",
+            "gpu_count": 4,
+            "timeout": 1200
+        },
+        {
+            "id": "Qwen2.5vl_7b",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen2.5-VL-7B-Instruct/",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "Qwen2.5_72b_int4_awq",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen2___5-72B-Instruct-AWQ/",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "Qwen2.5_72b_int4_gptq",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen2___5-72B-Instruct-GPTQ-Int4/",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "Qwen2.5_14b_w8a8",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/W8A8/Qwen2.5-14B-Instruct-W8A8-Dynamic-Per-Token",
+            "gpu_count": 1,
+            "timeout": 300,
+            "ext_env": "w8a8_env"
+        },
+        {
+            "id": "Qwen3-14B-AWQ",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-14B-AWQ",
+            "gpu_count": 1,
+            "timeout": 600
+        },
+        {
+            "id": "Qwen3-14B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-14B",
+            "gpu_count": 1,
+            "timeout": 600
+        },
+        {
+            "id": "Qwen3-1__7B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-1___7B",
+            "gpu_count": 1,
+            "timeout": 600
+        },
+        {
+            "id": "Qwen3-30B-A3B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 2   -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-30B-A3B",
+            "gpu_count": 2,
+            "timeout": 1200
+        },
+        {
+            "id": "Qwen3-30B-A3B_dp2tp2",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 2 -dp 2  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-30B-A3B",
+            "gpu_count": 4,
+            "timeout": 1200
+        },
+        {
+            "id": "Qwen3-30B-A3B.w8a8",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-30B-A3B.w8a8",
+            "gpu_count": 1,
+            "timeout": 1200,
+            "ext_env": "w8a8_env"
+        },
+        {
+            "id": "Qwen3-32B-AWQ",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-32B-AWQ",
+            "gpu_count": 1,
+            "timeout": 1200
+        },
+        {
+            "id": "Qwen3-32B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-32B",
+            "gpu_count": 4,
+            "timeout": 1200
+        },
+        {
+            "id": "Qwen3-32B_dp2tp2",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 2 -dp 2  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-32B",
+            "gpu_count": 4,
+            "timeout": 1200
+        },
+        {
+            "id": "Qwen3-4B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-4B",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "Qwen3-Next-80B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 8  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Qwen/Qwen3-Next-80B-A3B-Instruct/",
+            "gpu_count": 8,
+            "timeout": 1800
+        },
+        {
+            "id": "Llama2_7B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Llama/Llama-2-7b-hf",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "Llama3_70b",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Llama/Meta-Llama-3-70B/",
+            "gpu_count": 4,
+            "timeout": 1200
+        },
+        {
+            "id": "Llama3_70b_w8a8",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 2  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/W8A8/Meta-Llama-3-70B-Instruct-quantized___w8a8",
+            "gpu_count": 2,
+            "timeout": 600,
+            "ext_env": "w8a8_env"
+        },
+        {
+            "id": "Baichuan2_7B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Baichuan/Baichuan-7B",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "ChatGLM3_6B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/ChatGLM/chatglm3-6b",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "glm4_9b_chat",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/ChatGLM/glm-4-9b-chat",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "glm4v_9b",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/ChatGLM/glm-4v-9b",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "InternVL2.5_8b",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 1  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Internlm/InternVL2_5-8B",
+            "gpu_count": 1,
+            "timeout": 300
+        },
+        {
+            "id": "Mixtral-8x7B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Mistral/Mixtral-8x7B-v0.1",
+            "gpu_count": 4,
+            "timeout": 1800
+        },
+        {
+            "id": "Mixtral-8X22B",
+            "command": "--trust-remote-code --distributed-executor-backend ray --max-model-len 32768  --dtype bfloat16 --swap-space 16 --gpu-memory-utilization 0.95 -tp 4  -O '{\"full_cuda_graph\": \"true\"}'",
+            "model_path": "/pde_ai/models/llm/Mistral/Mixtral-8x22B-Instruct-v0.1",
+            "gpu_count": 8,
+            "timeout": 3600
+        }
+    ]
+}
