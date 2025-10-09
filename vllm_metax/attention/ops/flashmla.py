@@ -143,6 +143,42 @@ def flash_mla_with_kvcache(
     return out, softmax_lse
 
 
+# Metax: torch_ref
+def torch_flash_mla_sparse_prefill(
+        q: torch.Tensor, kv: torch.Tensor, indices: torch.Tensor,
+        sm_scale: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    import math
+
+    def log2sumexp2(a: torch.Tensor, dim: int) -> torch.Tensor:
+        return torch.logsumexp(a * math.log(2), dim=dim) * math.log2(math.e)
+
+    assert len(q.shape) == len(kv.shape) == 3  # b == 1
+    s_q, _, d_qk = q.shape
+    s_kv, _, _ = kv.shape
+
+    indices = indices[:, 0, :]  # [s_q, topk]
+    invalid_indices_mask = (indices < 0) | (indices >= s_kv)
+    qs = q[:, :, :].float()  # [s_q, h_q, d_qk]
+    kvs = kv[:, 0, :].float()  # [s_kv, d_qk]
+
+    _, topk = indices.shape
+
+    kvs = torch.index_select(
+        kvs, 0,
+        indices.masked_fill(invalid_indices_mask,
+                            0).flatten()).view(s_q, topk,
+                                               d_qk)  # [s_q, topk, d_qk]
+    attn_score = qs @ kvs.transpose(1, 2)  # [s_q, h_q, topk]
+    attn_score.masked_fill_(invalid_indices_mask.unsqueeze(1), float('-inf'))
+    attn_score *= sm_scale * math.log2(math.e)
+    max_logits = torch.max(attn_score, dim=-1)[0]  # [s_q, h_q]
+    lse = log2sumexp2(attn_score, dim=-1)  # [s_q, h_q]
+    attn_score = torch.exp2(attn_score - lse.unsqueeze(-1))  # [s_q, h_q, topk]
+    result = attn_score @ kvs[:, :, :512]
+
+    return (result.to(torch.bfloat16), max_logits, lse)
+
+
 def flash_mla_sparse_prefill(
     q: torch.Tensor,
     kv: torch.Tensor,
@@ -170,7 +206,9 @@ def flash_mla_sparse_prefill(
     - lse: [s_q, h_q], float, 2-based log-sum-exp
     """
     # TODO: MetaX flash_mla support
-    results = flash_mla.sparse_prefill_fwd(q, kv, indices, sm_scale, d_v)
+    # /------------------------  Metax Modification -------------------------\
+    results = torch_flash_mla_sparse_prefill(q, kv, indices, sm_scale, d_v)
+    # \------------------------- Metax Modification -------------------------/
     return results
 
 
