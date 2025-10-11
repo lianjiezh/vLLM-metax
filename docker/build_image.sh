@@ -1,0 +1,1 @@
+docker build --network host -f vllm_metax.Dockerfile -t vllm_metax:v0 .
