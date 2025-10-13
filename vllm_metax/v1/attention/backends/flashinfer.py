@@ -1090,6 +1090,7 @@ def fast_plan_decode(
 
     try:
         # Make sure we pass exactly 15 arguments for tensor core version
+        device = self._float_workspace_buffer.device
         self._plan_info = self._cached_module.plan(
             self._float_workspace_buffer,
             self._int_workspace_buffer,
@@ -1106,6 +1107,7 @@ def fast_plan_decode(
             head_dim,
             head_dim,
             False,  # causal
+            torch.cuda.current_stream(device).cuda_stream
         )
     except Exception as e:
         raise RuntimeError(f"Error in tensor core plan: {e}") from e
