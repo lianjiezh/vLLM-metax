@@ -450,8 +450,21 @@ def fixed_version_scheme(version: ScmVersion) -> str:
     return "0.11.0"
 
 
+def always_hash(version: ScmVersion) -> str:
+    """
+    Always include short commit hash and current date (YYYYMMDD)
+    """
+    from datetime import datetime
+    date_str = datetime.now().strftime("%Y%m%d")
+    if version.node is not None:
+        short_hash = version.node[:7]  # short commit id
+        return f"g{short_hash}.d{date_str}"
+    return f"unknown.{date_str}"
+
+
 def get_vllm_version() -> str:
     version = get_version(version_scheme=fixed_version_scheme,
+                          local_scheme=always_hash,
                           write_to="vllm_metax/_version.py")
     sep = "+" if "+" not in version else "."  # dev versions might contain +
 
