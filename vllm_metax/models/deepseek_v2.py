@@ -572,8 +572,8 @@ def sparse_attn_indexer(
         prefill_metadata = attn_metadata.prefill
         for chunk in prefill_metadata.chunks:
             _k_bf16 = torch.empty([chunk.total_seq_lens, head_dim],
-                                device=k_bf16.device,
-                                dtype=torch.bfloat16)
+                                  device=k_bf16.device,
+                                  dtype=torch.bfloat16)
             cp_gather_indexer_k_quant_cache(
                 kv_cache,
                 _k_bf16,
