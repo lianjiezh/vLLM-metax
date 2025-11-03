@@ -82,9 +82,9 @@ git clone  --depth 1 --branch [branch-name] [vllm-metax-repo-url] && cd vllm-met
 ```
 There are two ways to build the plugin:
 
-**build on *released* docker images:**
-
-we need to add `-no-build-isolation` flag (or an equivalent one) during package building. Since all the requirements are already pre-installed in released docker image.
+> build on *released* docker image
+> we need to add `-no-build-isolation` flag (or an equivalent one) during package building. 
+> Since all the requirements are already pre-installed in released docker image.
 
 - if you want to build the binary distribution:
 
