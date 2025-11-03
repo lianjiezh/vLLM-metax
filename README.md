@@ -88,7 +88,7 @@ There are two ways to build the plugin:
 # install requirements for building
 pip install -r requirements/build.txt
 # build wheels
-python setup.py bdist_wheel
+python -m build -w -n
 # install wheels
 pip install dist/*.whl
 ```
@@ -102,20 +102,3 @@ pip install -r requirements/build.txt
 # to avoid the conflict with the official pytorch
 pip install . -v --no-build-isolation
 ```
-
-> ***Note***: plugin would copy the `.so` files to the vllm_dist_path, which is the `vllm` under `pip show vllm | grep Location` by default.
->
-> If you :
->
-> - ***Skipped the building step*** and installed the binary distribution `.whl` from somewhere else(e.g. pypi).
->
-> - Or ***reinstalled*** the official vllm
->
-> You need **manually** executing the following command to initialize the plugin after the plugin installation:
-
-```bash
-$ vllm_metax_init
-```
-
-
-
