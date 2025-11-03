@@ -82,10 +82,15 @@ git clone  --depth 1 --branch [branch-name] [vllm-metax-repo-url] && cd vllm-met
 ```
 There are two ways to build the plugin:
 
-- if you want to build the binary distribution :
+**build on *released* docker images:**
+
+we need to add `-no-build-isolation` flag (or an equivalent one) during package building. Since all the requirements are already pre-installed in released docker image.
+
+- if you want to build the binary distribution:
 
 ```bash
 # install requirements for building
+python use_existing_metax.py
 pip install -r requirements/build.txt
 # build wheels
 python -m build -w -n
@@ -93,10 +98,11 @@ python -m build -w -n
 pip install dist/*.whl
 ```
 
-- Or, you could *build and install* the plugin via `pip`:
+- Or, install directly:
 
 ```bash
 # install requirements for building
+python use_existing_metax.py
 pip install -r requirements/build.txt
 # since we use our local pytorch, add the --no-build-isolation flag 
 # to avoid the conflict with the official pytorch
