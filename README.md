@@ -2,42 +2,6 @@
 
 The MXMACA backend plugin for vLLM.
 
-## Prepare Building Environments
-
-vllm-metax plugin needs to be built with corresponding **Maca Toolkits**.
-
-### manually
-
-Checking and install all the vLLM environment requirements [here](https://developer.metax-tech.com/softnova/category?package_kind=AI&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85&ai_frame=vllm&ai_label=vLLM):
-
-<img width="1788" height="183" alt="image" src="https://github.com/user-attachments/assets/df1c30bd-e2f9-41a9-a1b2-256291edc618" />
-
-You could also update *Maca Toolkits* separately with specific version by:
-
-- *MetaX Driver*: [*online*](https://developer.metax-tech.com/softnova/download?package_kind=Driver&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85) or [*offline*](https://developer.metax-tech.com/softnova/download?package_kind=Driver&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85)
-
-- *Maca SDK*: [*online*](https://developer.metax-tech.com/softnova/download?package_kind=SDK&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85) or [*offline*](https://developer.metax-tech.com/softnova/download?package_kind=SDK&dimension=metax&chip_name=%E6%9B%A6%E4%BA%91C500%E7%B3%BB%E5%88%97&deliver_type=%E5%88%86%E5%B1%82%E5%8C%85)
-
-### or... docker images
-
-Directly using docker images released on [*MetaX Develop Community*](https://developer.metax-tech.com/softnova/docker).
-All the required components are pre-installed in docker image.
-
-> Note: You may need to search docker images for `vllm` distribution.
-
-***Belows is version mapping to released plugin and maca***:
-
-| plugin version | maca version | docker distribution tag |
-|:--------------:|:------------:|:-----------------------:|
-|v0.8.5          |maca2.33.1.13 | vllm:maca.ai2.33.1.13-torch2.6-py310-ubuntu22.04-amd64 |
-|v0.9.1          |maca3.0.0.5   | vllm:maca.ai3.0.0.5-torch2.6-py310-ubuntu22.04-amd64 |
-|v0.10.1.1 (dev only)|maca3.0.0.5(dev only)| vllm:maca.ai3.0.0.5-torch2.6-py310-ubuntu22.04-amd64 (dev only)|
-|v0.10.2(dev only)|maca3.1.0.x(dev only)| N/A |
-|master|maca3.1.0.x(dev only)| N/A|
-
-
-> Note: All the vllm tests are based on the related maca version. Using incorresponding version of maca for vllm may cause unexpected bugs or errors. This is not garanteed.
-
 ## Install plugin
 
 Currently we only support building in docker.

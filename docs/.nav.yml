@@ -1,3 +1,10 @@
 nav:
   - Home: README.md
+  - User Guide:
+    - usage/README.md
+    - Getting Started:
+      - getting_started/quickstart.md
+      - getting_started/installation
+    # - Inference and Serving:
+      # - serving/*
 # Todo: Add more navigation items here
