@@ -69,7 +69,28 @@ plugins:
       cache_safe: true
       js_files: [docs/mkdocs/javascript/*.js]
       css_files: [docs/mkdocs/stylesheets/*.css]
-
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            filters: []
+            summary:
+              modules: true
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            separate_signature: true
+            show_overloads: true
+            signature_crossrefs: true
+          inventories:
+          - https://docs.python.org/3/objects.inv
+          - https://typing-extensions.readthedocs.io/en/latest/objects.inv
+          - https://docs.aiohttp.org/en/stable/objects.inv
+          - https://pillow.readthedocs.io/en/stable/objects.inv
+          - https://numpy.org/doc/stable/objects.inv
+          - https://pytorch.org/docs/stable/objects.inv
+          - https://psutil.readthedocs.io/en/stable/objects.inv
 markdown_extensions:
   - attr_list
   - md_in_html
