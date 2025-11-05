@@ -1,7 +1,7 @@
 nav:
   - Home: README.md
   - User Guide:
-    - usage/README.md
+    # - usage/README.md
     - Getting Started:
       - getting_started/quickstart.md
       - getting_started/installation
