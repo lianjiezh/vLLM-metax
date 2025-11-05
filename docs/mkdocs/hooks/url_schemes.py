@@ -63,7 +63,7 @@ def on_page_markdown(markdown: str, *, page: Page, config: MkDocsConfig,
         slug = "tree/main" if path.is_dir() else "blob/main"
 
         path = path.relative_to(ROOT_DIR)
-        url = f"https://github.com/vllm-project/vllm/{slug}/{path}"
+        url = f"https://github.com/MetaX-MACA/vLLM-metax/{slug}/{path}"
         return f"[{gh_icon} {title}]({url})"
 
     def replace_github_link(match: re.Match) -> str:
@@ -78,7 +78,7 @@ def on_page_markdown(markdown: str, *, page: Page, config: MkDocsConfig,
         # Use default titles for raw links
         if not title:
             title = TITLES[type]
-            if "vllm-project" not in repo:
+            if "MetaX-MACA" not in repo:
                 title += repo
             title += f"#{number}"
 
