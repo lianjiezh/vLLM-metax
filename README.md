@@ -1,74 +1,70 @@
-# vLLM-MetaX
+<!-- markdownlint-disable MD001 MD041 -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/vllm-project/vllm/main/docs/assets/logos/vllm-logo-text-dark.png">
+    <img alt="vLLM" src="https://raw.githubusercontent.com/MetaX-MACA/vLLM-metax/master/docs/assets/logos/vllm-metax-logo.png" width=55%>
+  </picture>
+</p>
 
-The MXMACA backend plugin for vLLM.
+<h3 align="center">
+vLLM MetaX Plugin
+</h3>
 
-## Install plugin
+<p align="center">
+| <a href="https://www.metax-tech.com/en/"><b>About MetaX</b></a> | <a href="https://vllm-metax.readthedocs.io/en/latest/"><b>Documentation</b></a> | <a href="https://slack.vllm.ai"><b>#sig-maca</b></a> </a> |
+</p>
 
-Currently we only support building in docker.
-> if build in host, you need to manually install all the dependencies and package requirements first.
+---
 
-### install vllm
-**clone repository and install from source**:
-```bash
-# clone vllm
-git clone  --depth 1 --branch main https://github.com/vllm-project/vllm && cd vllm
+*Latest News* 🔥
 
-# install build requirements
-python use_existing_torch.py
-pip install -r requirements/build.txt
-VLLM_TARGET_DEVICE=empty pip install -v . --no-build-isolation
-```
+- [2025/08] We hosted [vLLM Shanghai Meetup](https://mp.weixin.qq.com/s/pDmAXHcN7Iqc8sUKgJgGtg) focusing on building, developing, and integrating with vLLM! Please find the meetup slides [here](https://drive.google.com/drive/folders/1OvLx39wnCGy_WKq8SiVKf7YcxxYI3WCH).
 
-### install vllm-metax
 
-**setup env variables**:
+## About
 
-```
-# setup MACA path
-export MACA_PATH="/opt/maca"
+vLLM MetaX is a hardware plugin for running vLLM seamlessly on MetaX GPU, which is a cuda_alike backend and provided near-native CUDA experiences on MetaX Hardware with [*MACA*](https://www.metax-tech.com/en/goods/platform.html?cid=4).
 
-# cu-bridge
-export CUCC_PATH="${MACA_PATH}/tools/cu-bridge"
-export CUDA_PATH=/root/cu-bridge/CUDA_DIR
-export CUCC_CMAKE_ENTRY=2
+It is the recommended approach for supporting the MetaX backend within the vLLM community. 
 
-# update PATH
-export PATH=${MACA_PATH}/mxgpu_llvm/bin:${MACA_PATH}/bin:${CUCC_PATH}/tools:${CUCC_PATH}/bin:${PATH}
-export LD_LIBRARY_PATH=${MACA_PATH}/lib:${MACA_PATH}/ompi/lib:${MACA_PATH}/mxgpu_llvm/lib:${LD_LIBRARY_PATH}
+The plugin follows the vLLM plugin RFCs by default:
+ - [[RFC]: Hardware pluggable](https://github.com/vllm-project/vllm/issues/11162)
+ - [[RFC]: Enhancing vLLM Plugin Architecture](https://github.com/vllm-project/vllm/issues/19161)
 
-export VLLM_INSTALL_PUNICA_KERNELS=1
-```
+Which ensured the hardware features and functionality support on integration of the MetaX GPU with vLLM.
 
-**clone repository**:
-```bash
-# clone vllm-metax
-git clone  --depth 1 --branch [branch-name] [vllm-metax-repo-url] && cd vllm-metax
-```
-There are two ways to build the plugin:
+## Prerequisites
 
-> build on *released* docker image
-> we need to add `-no-build-isolation` flag (or an equivalent one) during package building. 
-> Since all the requirements are already pre-installed in released docker image.
+- Hardware: MetaX C-series
+- OS: Linux
+- Software:
+  - Python >= 3.9, < 3.12
+  - vLLM (the same version as vllm-metax)
+  - Docker support
 
-- if you want to build the binary distribution:
+## Getting Started
 
-```bash
-# install requirements for building
-python use_existing_metax.py
-pip install -r requirements/build.txt
-# build wheels
-python -m build -w -n
-# install wheels
-pip install dist/*.whl
-```
+vLLM MetaX currently only support starting on docker images release by [MetaX develop community](https://developer.metax-tech.com/softnova/docker) which is out of box. (DockerFile for other OS is undertesting)
 
-- Or, install directly:
+If you want to develop, debug or test the newest feature on vllm-metax, you may need to build from scratch and follow this [*source build tutorial*](https://vllm-metax.readthedocs.io/en/latest/getting_started/installation/MACA.html). 
 
-```bash
-# install requirements for building
-python use_existing_metax.py
-pip install -r requirements/build.txt
-# since we use our local pytorch, add the --no-build-isolation flag 
-# to avoid the conflict with the official pytorch
-pip install . -v --no-build-isolation
-```
+## Branch
+
+vllm-metax has master branch and dev branch.
+
+- **master**: main branch，catching up with main branch of vLLM upstream.
+- **vX.Y.Z-dev**: development branch, created with part of new releases of vLLM. For example, `v0.10.2-dev` is the dev branch for vLLM `v0.10.2` version.
+
+Below is maintained branches:
+
+| Branch      | Status       | Note                                 |
+|-------------|--------------|--------------------------------------|
+| master      | Maintained   | trying to support vllm main, no gurantee on functionality |
+| v0.11.0-dev | Maintained   | under testing |
+| v0.10.2-dev | Maintained   | release on Nov.2025 |
+
+Please check [here](https://vllm-metax.readthedocs.io/en/latest/getting_started/quickstart.html) for more details .
+
+## License
+
+Apache License 2.0, as found in the [LICENSE](./LICENSE) file.
