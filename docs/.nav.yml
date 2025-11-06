@@ -5,6 +5,8 @@ nav:
     - Getting Started:
       - getting_started/quickstart.md
       - getting_started/installation
+    - Models:
+      - models/supported_models.md
     # - Inference and Serving:
       # - serving/*
 # Todo: Add more navigation items here
