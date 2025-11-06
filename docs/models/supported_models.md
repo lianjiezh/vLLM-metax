@@ -66,15 +66,3 @@ See [this page](https://docs.vllm.ai/en/stable/features/multimodal_inputs.html) 
 | `QwenVLForConditionalGeneration`<sup>^</sup> | Qwen-VL | T + I<sup>E+</sup> | `Qwen/Qwen-VL`, `Qwen/Qwen-VL-Chat`, etc. | ✅︎ | ✅︎ |
 | `Qwen2_5_VLForConditionalGeneration` | Qwen2.5-VL | T + I<sup>E+</sup> + V<sup>E+</sup> | `Qwen/Qwen2.5-VL-3B-Instruct`, `Qwen/Qwen2.5-VL-72B-Instruct`, etc. | ✅︎ | ✅︎ |
 | `Qwen3VLMoeForConditionalGeneration` | Qwen3-VL-MOE | T + I<sup>E+</sup> + V<sup>E+</sup> | `Qwen/Qwen3-VL-30B-A3B-Instruct`, etc. | ⚠️ | ✅︎ |
-
-Some models are supported only via the [Transformers backend](#transformers). The purpose of the table below is to acknowledge models which we officially support in this way. The logs will say that the Transformers backend is being used, and you will see no warning that this is fallback behaviour. This means that, if you have issues with any of the models listed below, please [make an issue](https://github.com/vllm-project/vllm/issues/new/choose) and we'll do our best to fix it!
-
-| Architecture | Models | Inputs | Example HF Models | [LoRA](https://docs.vllm.ai/en/stable/features/lora.html) | [PP](https://docs.vllm.ai/en/stable/serving/parallelism_scaling.html) |
-|--------------|--------|--------|-------------------|-----------------------------|-----------------------------------------|
-| `Emu3ForConditionalGeneration` | Emu3 | T + I | `BAAI/Emu3-Chat-hf` | ✅︎ | ✅︎ |
-
-<sup>^</sup> You need to set the architecture name via `--hf-overrides` to match the one in vLLM.
-&nbsp;&nbsp;&nbsp;&nbsp;• For example, to use DeepSeek-VL2 series models:
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`--hf-overrides '{"architectures": ["DeepseekVLV2ForCausalLM"]}'`
-<sup>E</sup> Pre-computed embeddings can be inputted for this modality.
-<sup>+</sup> Multiple items can be inputted per text prompt for this modality.

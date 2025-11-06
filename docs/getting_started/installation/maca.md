@@ -1,4 +1,4 @@
-# MACA
+# Installation
 
 ## Requirements
 
