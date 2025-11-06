@@ -47,7 +47,7 @@ Which ensured the hardware features and functionality support on integration of 
 
 vLLM MetaX currently only support starting on docker images release by [MetaX develop community](https://developer.metax-tech.com/softnova/docker) which is out of box. (DockerFile for other OS is undertesting)
 
-If you want to develop, debug or test the newest feature on vllm-metax, you may need to build from scratch and follow this [*source build tutorial*](https://vllm-metax.readthedocs.io/en/latest/getting_started/installation/MACA.html). 
+If you want to develop, debug or test the newest feature on vllm-metax, you may need to build from scratch and follow this [*source build tutorial*](https://vllm-metax.readthedocs.io/en/latest/getting_started/installation/maca.html). 
 
 ## Branch
 
@@ -69,3 +69,4 @@ Please check [here](https://vllm-metax.readthedocs.io/en/latest/getting_started/
 ## License
 
 Apache License 2.0, as found in the [LICENSE](./LICENSE) file.
+
