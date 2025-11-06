@@ -2,6 +2,8 @@
 
 Currently the recommanded way to start ***vLLM-MetaX*** is via *docker*.
 
+You could get the docker image at [MetaX develop community](https://developer.metax-tech.com/softnova/docker).
+
 *Belows is version mapping to released plugin and maca*:
 
 | plugin version | maca version | docker distribution tag |
