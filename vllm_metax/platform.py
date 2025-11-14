@@ -116,9 +116,6 @@ class MacaPlatformBase(Platform):
 
     @classmethod
     def check_and_update_config(cls, vllm_config: "VllmConfig") -> None:
-        # Env Override
-        envs.VLLM_USE_FLASHINFER_SAMPLER = False
-
         # Config Override
         parallel_config = vllm_config.parallel_config
         compilation_config = vllm_config.compilation_config
@@ -634,3 +631,8 @@ finally:
 
 MacaPlatform = MxmlPlatform if mxml_available else NonMxmlMetaxPlatform
 MacaPlatform.log_warnings()
+
+
+# Note: Put all env Override here for Maca platform
+envs.VLLM_USE_FLASHINFER_SAMPLER = False
+envs.VLLM_USE_STANDALONE_COMPILE = False
