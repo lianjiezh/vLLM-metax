@@ -3,26 +3,26 @@
 pynvml. However, it should not initialize cuda context.
 """
 
+import contextlib
 import os
-from datetime import timedelta
-from functools import wraps
-from typing import TYPE_CHECKING, Callable, List, Optional, TypeVar, Union
+from collections.abc import Callable
+from functools import cache, wraps
+from typing import TYPE_CHECKING, TypeVar
 
 import torch
-# import custom ops, trigger op registration
-import vllm.envs as envs
-from torch.distributed import PrefixStore, ProcessGroup
-from torch.distributed.distributed_c10d import is_nccl_available
 from typing_extensions import ParamSpec
-from vllm.logger import logger
-from vllm.platforms.interface import (DeviceCapability, FlexibleArgumentParser,
-                                      Platform, PlatformEnum, _Backend)
-from vllm.utils import cuda_device_count_stateless
 
+import vllm.envs as envs
+from vllm.logger import logger
 from vllm_metax.utils import import_pymxml
+from vllm.utils.torch_utils import cuda_device_count_stateless
+
+from vllm.platforms.interface import DeviceCapability, Platform, PlatformEnum
+from vllm.utils.argparse_utils import FlexibleArgumentParser
 
 if TYPE_CHECKING:
-    from vllm.config import ModelConfig, VllmConfig
+    from vllm.attention.backends.registry import _Backend
+    from vllm.config import VllmConfig
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
@@ -36,7 +36,6 @@ torch.backends.cuda.enable_cudnn_sdp(False)
 
 
 def with_mxml_context(fn: Callable[_P, _R]) -> Callable[_P, _R]:
-
     @wraps(fn)
     def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         pymxml.nvmlInit()
@@ -58,8 +57,12 @@ class MacaPlatformBase(Platform):
     device_control_env_var: str = "CUDA_VISIBLE_DEVICES"
 
     supported_quantization: list[str] = [
-        "awq", "gptq", "compressed-tensors", "compressed_tensors", "moe_wna16",
-        "gguf"
+        "awq",
+        "gptq",
+        "compressed-tensors",
+        "compressed_tensors",
+        "moe_wna16",
+        "gguf",
     ]
 
     @classmethod
@@ -74,9 +77,7 @@ class MacaPlatformBase(Platform):
         _ = torch.zeros(1, device=device)
 
     @classmethod
-    def get_device_capability(cls,
-                              device_id: int = 0
-                              ) -> Optional[DeviceCapability]:
+    def get_device_capability(cls, device_id: int = 0) -> DeviceCapability | None:
         raise NotImplementedError
 
     @classmethod
@@ -104,6 +105,16 @@ class MacaPlatformBase(Platform):
         pass
 
     @classmethod
+    def import_kernels(cls) -> None:
+        """Import any platform-specific C kernels."""
+        try:
+            import vllm_metax._C  # noqa: F401
+        except ImportError as e:
+            logger.warning("Failed to import from vllm_metax._C: %r", e)
+        with contextlib.suppress(ImportError):
+            import vllm_metax._moe_C  # noqa: F401
+
+    @classmethod
     def check_and_update_config(cls, vllm_config: "VllmConfig") -> None:
         # Env Override
         envs.VLLM_USE_FLASHINFER_SAMPLER = False
@@ -114,17 +125,7 @@ class MacaPlatformBase(Platform):
         model_config = vllm_config.model_config
 
         if parallel_config.worker_cls == "auto":
-            if vllm_config.speculative_config:
-                if not envs.VLLM_USE_V1:
-                    raise NotImplementedError(
-                        "Speculative decoding is not supported on vLLM V0.")
-                parallel_config.worker_cls = "vllm.v1.worker.gpu_worker.Worker"
-            else:
-                if envs.VLLM_USE_V1:
-                    parallel_config.worker_cls = \
-                        "vllm.v1.worker.gpu_worker.Worker"
-                else:
-                    parallel_config.worker_cls = "vllm.worker.worker.Worker"
+            parallel_config.worker_cls = "vllm.v1.worker.gpu_worker.Worker"
 
         cache_config = vllm_config.cache_config
         if cache_config and cache_config.block_size is None:
@@ -132,9 +133,12 @@ class MacaPlatformBase(Platform):
 
         # TODO(lucas): handle this more gracefully
         # Note: model_config may be None during testing
-        if model_config is not None and model_config.use_mla:
-            use_sparse = hasattr(vllm_config.model_config.hf_config,
-                                 "index_topk")
+        if (
+            model_config is not None
+            and model_config.use_mla
+            and cache_config.block_size is not None
+        ):
+            use_sparse = hasattr(vllm_config.model_config.hf_config, "index_topk")
             # If `VLLM_ATTENTION_BACKEND` is not set and we are using MLA,
             # then we default to FlashMLA backend for non-blackwell GPUs,
             # else we default to CutlassMLA. For each case, we force the
@@ -157,34 +161,51 @@ class MacaPlatformBase(Platform):
                     use_flashmla = True
             else:
                 # Forced case
-                use_flashmla = (envs.VLLM_ATTENTION_BACKEND == "FLASHMLA")
-                use_cutlass_mla = (
-                    envs.VLLM_ATTENTION_BACKEND == "CUTLASS_MLA")
+                use_flashmla = envs.VLLM_ATTENTION_BACKEND == "FLASHMLA"
+                use_cutlass_mla = envs.VLLM_ATTENTION_BACKEND == "CUTLASS_MLA"
+                use_flashinfer_mla = envs.VLLM_ATTENTION_BACKEND == "FLASHINFER_MLA"
 
-            from vllm_metax.attention.ops.flashmla import is_flashmla_supported
-            if use_flashmla and is_flashmla_supported()[0] \
-                and cache_config.block_size != 64:
+            from vllm_metax.attention.ops.flashmla import is_flashmla_dense_supported
+
+            if (
+                use_flashmla
+                and is_flashmla_dense_supported()[0]
+                and cache_config.block_size % 64 != 0
+            ):
                 cache_config.block_size = 64
-                logger.info(
-                    "Forcing kv cache block size to 64 for FlashMLA backend.")
+                logger.info("Forcing kv cache block size to 64 for FlashMLA backend.")
 
             if use_cutlass_mla and cache_config.block_size != 128:
                 cache_config.block_size = 128
-                logger.info("Forcing kv cache block size to 128 for "
-                            "CUTLASS_MLA backend.")
+                logger.info(
+                    "Forcing kv cache block size to 128 for CUTLASS_MLA backend."
+                )
+
+            if (
+                use_flashinfer_mla
+                and cache_config.block_size != 32
+                and cache_config.block_size % 64 != 0
+            ):
+                cache_config.block_size = 64
+                logger.info(
+                    "Forcing kv cache block size to 64 for FlashInferMLA backend."
+                )
+
             # TODO(Chen): remove this hacky code
             if use_sparse and cache_config.block_size != 64:
                 cache_config.block_size = 64
                 logger.info(
-                    "Forcing kv cache block size to 64 for FlashMLASparse "
-                    "backend.")
+                    "Forcing kv cache block size to 64 for FlashMLASparse backend."
+                )
         # lazy import to avoid circular import
         from vllm.config import CUDAGraphMode
 
         compilation_config = vllm_config.compilation_config
-        if (envs.VLLM_ALL2ALL_BACKEND == "deepep_high_throughput"
-                and parallel_config.data_parallel_size > 1
-                and compilation_config.cudagraph_mode != CUDAGraphMode.NONE):
+        if (
+            envs.VLLM_ALL2ALL_BACKEND == "deepep_high_throughput"
+            and parallel_config.data_parallel_size > 1
+            and compilation_config.cudagraph_mode != CUDAGraphMode.NONE
+        ):
             # TODO: Piecewise Cuda graph might be enabled
             # if torch compile cache key issue fixed
             # See https://github.com/vllm-project/vllm/pull/25093
@@ -194,111 +215,154 @@ class MacaPlatformBase(Platform):
                 "CUDA Graphs. "
                 "In order to use CUDA Graphs for decode-optimized workloads, "
                 "set VLLM_ALL2ALL_BACKEND to another option, such as "
-                "deepep_low_latency, pplx, or allgather_reducescatter.")
+                "deepep_low_latency, pplx, or allgather_reducescatter."
+            )
             compilation_config.cudagraph_mode = CUDAGraphMode.NONE
 
+        # Reduce the cudagraph capture sizes on Maca to avoid OOM issues
+        compilation_config.max_cudagraph_capture_size = 256
+        compilation_config.cudagraph_capture_sizes = [
+            size
+            for size in compilation_config.cudagraph_capture_sizes
+            if size <= compilation_config.max_cudagraph_capture_size
+        ]
+        compilation_config.compile_sizes = [
+            size
+            for size in compilation_config.compile_sizes
+            if size <= compilation_config.max_cudagraph_capture_size
+        ]
+        compilation_config.bs_to_padded_graph_size = [
+            size
+            for size in compilation_config.bs_to_padded_graph_size
+            if size <= compilation_config.max_cudagraph_capture_size
+        ]
 
-        if vllm_config.model_config is not None and \
-            not vllm_config.model_config.enforce_eager and \
-            compilation_config.cudagraph_capture_sizes is not None:
-            batch_size_capture_list = [
-                size for size in compilation_config.cudagraph_capture_sizes
-                if size < 257
-            ]
-            compilation_config.cudagraph_capture_sizes = None
-            compilation_config.init_with_cudagraph_sizes(
-                batch_size_capture_list)
-
+        # Disable cascade attention for Maca platform currently
         if vllm_config.model_config is not None:
             model_config.disable_cascade_attn = True
 
     @classmethod
-    def get_current_memory_usage(cls,
-                                 device: Optional[torch.types.Device] = None
-                                 ) -> float:
+    def get_current_memory_usage(
+        cls, device: torch.types.Device | None = None
+    ) -> float:
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats(device)
         return torch.cuda.max_memory_allocated(device)
 
     @classmethod
-    def get_vit_attn_backend(cls, head_size: int,
-                             dtype: torch.dtype) -> _Backend:
-        if dtype not in (torch.float16, torch.bfloat16):
-            return _Backend.XFORMERS
+    def get_vit_attn_backend(cls, head_size: int, dtype: torch.dtype) -> "_Backend":
+        from vllm.attention.backends.registry import _Backend
 
-        FLASH_ATTN_V1 = "vllm_metax.v1.attention.backends.flash_attn.MacaFlashAttentionBackend"  # noqa: E501
+        # TODO(Hank) Need to check which is better between
+        # TORCH_SDPA or FLASH_ATTN on Maca platform
+        FLASH_ATTN_V1 = (
+            "vllm_metax.v1.attention.backends.flash_attn.MacaFlashAttentionBackend"  # noqa: E501
+        )
         from vllm.attention.selector import is_attn_backend_supported
-        is_default_fa_supported = is_attn_backend_supported(
-            FLASH_ATTN_V1, head_size, dtype, allow_import_error=False)
-        if is_default_fa_supported:
+
+        if is_default_fa_supported := is_attn_backend_supported(
+            FLASH_ATTN_V1, head_size, dtype, allow_import_error=False
+        ):
             return _Backend.FLASH_ATTN
         else:
-            # Fallback to XFORMERS
-            return _Backend.XFORMERS
+            use_sdpa_attention_reason = {}
+            if not is_default_fa_supported.head_size:
+                use_sdpa_attention_reason["head_size"] = head_size
+            if not is_default_fa_supported.dtype:
+                use_sdpa_attention_reason["dtype"] = dtype
+            logger.warning(
+                "Fallback to Backend TORCH_SDPA as vit_attn_backend since %s is "
+                "not supported on FLASH_ATTN.",
+                ", ".join(f"{k}={v}" for k, v in use_sdpa_attention_reason.items()),
+            )
+            return _Backend.TORCH_SDPA
 
     @classmethod
-    def get_attn_backend_cls(cls, selected_backend, head_size, dtype,
-                             kv_cache_dtype, block_size, use_v1, use_mla,
-                             has_sink, use_sparse) -> str:
+    def get_attn_backend_cls(
+        cls,
+        selected_backend,
+        head_size,
+        dtype,
+        kv_cache_dtype,
+        block_size,
+        use_v1,
+        use_mla,
+        has_sink,
+        use_sparse,
+    ) -> str:
+        from vllm.attention.backends.registry import _Backend
+
         if use_mla:
             if not use_v1:
                 raise RuntimeError(
                     "MLA attention backends require the V1 engine. "
-                    "Set VLLM_USE_V1=1 to enable them.")
+                    "Set VLLM_USE_V1=1 to enable them."
+                )
+
+            from vllm_metax.attention.ops.flashmla import is_flashmla_dense_supported
+            from vllm_metax.attention.utils.fa_utils import flash_attn_supports_mla
 
             if use_sparse:
                 logger.info_once("Using Sparse MLA backend on V1 engine.")
-                return ("vllm_metax.v1.attention.backends.mla.flashmla_sparse."
-                        "MacaFlashMLASparseBackend")
+                return (
+                    "vllm_metax.v1.attention.backends.mla.flashmla_sparse."
+                    "MacaFlashMLASparseBackend"
+                )
 
-            from vllm_metax.attention.ops.flashmla import is_flashmla_supported
-
-            use_cutlassmla = _Backend.CUTLASS_MLA or (
-                cls.is_device_capability(100) and selected_backend is None
-                and block_size == 128)
+            use_cutlassmla = selected_backend == _Backend.CUTLASS_MLA or (
+                selected_backend is None and block_size % 128 == 0
+            )
+            use_flashinfermla = selected_backend == _Backend.FLASHINFER_MLA or (
+                selected_backend is None and (block_size == 32 or block_size % 64 == 0)
+            )
             use_flashmla = selected_backend == _Backend.FLASHMLA or (
-                selected_backend is None and is_flashmla_supported()[0])
+                selected_backend is None and is_flashmla_dense_supported()[0]
+            )
+            use_flashattn_mla = selected_backend == _Backend.FLASH_ATTN_MLA or (
+                selected_backend is None and flash_attn_supports_mla()
+            )
             use_triton = selected_backend == _Backend.TRITON_MLA or (
-                selected_backend is None)
-
-            def _get_version(name, import_suffix) -> str:
-                if use_v1:
-                    logger.info_once(f"Using {name} backend on V1 engine.")
-                    return f"vllm_metax.v1.attention.backends.mla.{import_suffix}"
-                else:
-                    raise AssertionError(
-                        f"{name} backend is only supported on V1 engine")
+                selected_backend is None
+            )
 
             if use_flashmla:
-                if block_size != 64:
+                if block_size % 64 != 0:
                     logger.warning(
                         "FlashMLA backend is not supported for block size %d"
                         " (currently only supports block size 64).",
-                        block_size)
+                        block_size,
+                    )
                 else:
-                    return _get_version("Maca FlashMLA",
-                                        "flashmla.MacaFlashMLABackend")
+                    logger.info_once("Using FlashMLA backend on V1 engine.")
+                    return "vllm_metax.v1.attention.backends.mla.flashmla.MacaFlashMLABackend"  # noqa: E501
             if use_triton:
-                return _get_version("Maca Triton MLA",
-                                    "triton_mla.MacaTritonMLABackend")
+                logger.info_once("Using Triton MLA backend on V1 engine.")
+                return "vllm_metax.v1.attention.backends.mla.triton_mla.MacaTritonMLABackend"  # noqa: E501
             # default mla
             logger.warning(
                 "Selected MLA backend is not valid, falling back to Triton MLA."
             )
-            return _get_version("Maca Triton MLA",
-                                "triton_mla.MacaTritonMLABackend")
+            return (
+                "vllm_metax.v1.attention.backends.mla.triton_mla.MacaTritonMLABackend"  # noqa: E501
+            )
         if use_v1:
             assert not use_mla
-            FLASHINFER_V1 = "vllm_metax.v1.attention.backends.flashinfer.MacaFlashInferBackend"  # noqa: E501
-            FLEX_ATTENTION_V1 = "vllm_metax.v1.attention.backends.flex_attention.FlexAttentionBackend"  # noqa: E501
+            FLASHINFER_V1 = (
+                "vllm_metax.v1.attention.backends.flashinfer.MacaFlashInferBackend"  # noqa: E501
+            )
+            FLEX_ATTENTION_V1 = "vllm_metax.v1.attention.backends.flex_attention.MacaFlexAttentionBackend"  # noqa: E501
             TRITON_ATTN = "vllm_metax.v1.attention.backends.triton_attn.MacaTritonAttentionBackend"  # noqa: E501
-            FLASH_ATTN_V1 = "vllm_metax.v1.attention.backends.flash_attn.MacaFlashAttentionBackend"  # noqa: E501
-            TREE_ATTN_V1 = "vllm_metax.v1.attention.backends.tree_attn.TreeAttentionBackend"  # noqa: E501
+            FLASH_ATTN_V1 = (
+                "vllm_metax.v1.attention.backends.flash_attn.MacaFlashAttentionBackend"  # noqa: E501
+            )
+            TREE_ATTN_V1 = (
+                "vllm_metax.v1.attention.backends.tree_attn.MacaTreeAttentionBackend"  # noqa: E501
+            )
 
             if selected_backend == _Backend.FLASHINFER:
                 logger.info_once("Using FlashInfer backend on V1 engine.")
-                from vllm.v1.attention.backends.utils import (
-                    set_kv_cache_layout)
+                from vllm.v1.attention.backends.utils import set_kv_cache_layout
+
                 set_kv_cache_layout("HND")
                 return FLASHINFER_V1
             elif selected_backend == _Backend.FLEX_ATTENTION:
@@ -319,18 +383,19 @@ class MacaPlatformBase(Platform):
             # Default backends for V1 engine
             # FlashAttention is the default for MetaX GPUs
             if is_default_backend_supported := is_attn_backend_supported(
-                    FLASH_ATTN_V1, head_size, dtype, allow_import_error=False):
-                logger.info_once("Using Flash Attention backend on "
-                                 "V1 engine.")
+                FLASH_ATTN_V1, head_size, dtype, allow_import_error=False
+            ):
+                logger.info_once("Using Flash Attention backend on V1 engine.")
                 return FLASH_ATTN_V1
             if is_default_backend_supported := is_attn_backend_supported(
-                    FLASHINFER_V1, head_size, dtype):
-                from vllm.v1.attention.backends.utils import (
-                    set_kv_cache_layout)
+                FLASHINFER_V1, head_size, dtype
+            ):
+                from vllm.v1.attention.backends.utils import set_kv_cache_layout
 
                 logger.info_once(
                     "Using FlashInfer backend with HND KV cache layout on "
-                    "V1 engine by default for MetaX GPUs.")
+                    "V1 engine by default for MetaX GPUs."
+                )
                 set_kv_cache_layout("HND")
 
                 return FLASHINFER_V1
@@ -346,14 +411,14 @@ class MacaPlatformBase(Platform):
 
             logger.info_once(
                 "Using FlexAttention backend for %s on V1 engine.",
-                ", ".join(f"{k}={v}"
-                          for k, v in use_flex_attention_reason.items()),
+                ", ".join(f"{k}={v}" for k, v in use_flex_attention_reason.items()),
             )
             return FLEX_ATTENTION_V1
 
         raise RuntimeError(
             "V0 attention backends have been removed. Set VLLM_USE_V1=1 "
-            "to select a supported backend.")
+            "to select a supported backend."
+        )
 
     @classmethod
     def get_punica_wrapper(cls) -> str:
@@ -361,7 +426,9 @@ class MacaPlatformBase(Platform):
 
     @classmethod
     def get_device_communicator_cls(cls) -> str:
-        return "vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator"  # noqa
+        return (
+            "vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator"  # noqa
+        )
 
     @classmethod
     def supports_fp8(cls) -> bool:
@@ -380,50 +447,37 @@ class MacaPlatformBase(Platform):
         return "vllm.compilation.cuda_graph.CUDAGraphWrapper"
 
     @classmethod
-    def stateless_init_device_torch_dist_pg(
-        cls,
-        backend: str,
-        prefix_store: PrefixStore,
-        group_rank: int,
-        group_size: int,
-        timeout: timedelta,
-    ) -> ProcessGroup:
-        assert is_nccl_available()
-        pg: ProcessGroup = ProcessGroup(
-            prefix_store,
-            group_rank,
-            group_size,
-        )
-        from torch.distributed.distributed_c10d import ProcessGroupNCCL
-
-        backend_options = ProcessGroupNCCL.Options()
-        backend_options._timeout = timeout
-
-        backend_class = ProcessGroupNCCL(prefix_store, group_rank, group_size,
-                                         backend_options)
-        backend_type = ProcessGroup.BackendType.NCCL
-        device = torch.device("cuda")
-        pg._set_default_backend(backend_type)
-        backend_class._set_sequence_number_for_group()
-
-        pg._register_backend(device, backend_type, backend_class)
-        return pg
-
-    @classmethod
     def device_count(cls) -> int:
         return cuda_device_count_stateless()
 
     @classmethod
-    def is_kv_cache_dtype_supported(cls, kv_cache_dtype: str,
-                                    model_config: "ModelConfig") -> bool:
-        fp8_attention = kv_cache_dtype.startswith("fp8")
-        return (not fp8_attention)
+    def check_if_supports_dtype(cls, torch_dtype: torch.dtype):
+        if torch_dtype == torch.float8_e4m3fn or torch_dtype == torch.float8_e5m2:  # noqa
+            raise ValueError("FP8 is not supported on GPUs ")
 
     @classmethod
-    def check_if_supports_dtype(cls, torch_dtype: torch.dtype):
-        if torch_dtype == torch.float8_e4m3fn or \
-            torch_dtype == torch.float8_e5m2:  # noqa
-            raise ValueError("FP8 is not supported on GPUs ")
+    def insert_blocks_to_device(
+        cls,
+        src_cache: torch.Tensor,
+        dst_cache: torch.Tensor,
+        src_block_indices: torch.Tensor,
+        dst_block_indices: torch.Tensor,
+    ) -> None:
+        """Copy blocks from src_cache to dst_cache on GPU."""
+        _src_cache = src_cache[:, src_block_indices]
+        dst_cache[:, dst_block_indices] = _src_cache.to(dst_cache.device)
+
+    @classmethod
+    def swap_out_blocks_to_host(
+        cls,
+        src_cache: torch.Tensor,
+        dst_cache: torch.Tensor,
+        src_block_indices: torch.Tensor,
+        dst_block_indices: torch.Tensor,
+    ) -> None:
+        """Copy blocks from GPU to host (CPU)."""
+        _src_cache = src_cache[:, src_block_indices]
+        dst_cache[:, dst_block_indices] = _src_cache.cpu()
 
     @classmethod
     def support_hybrid_kv_cache(cls) -> bool:
@@ -434,11 +488,11 @@ class MacaPlatformBase(Platform):
         return True
 
     @classmethod
-    def pre_register_and_update(cls,
-                                parser: Optional[FlexibleArgumentParser] = None
-                                ) -> None:
-        logger.info("[hook] platform:pre_register_and_update...")
-        import vllm_metax.patch  # noqa: F401
+    def pre_register_and_update(
+        cls, parser: FlexibleArgumentParser | None = None
+    ) -> None:
+        # TODO(m01016): update cudagraph max capture size  here
+        logger.info("Pre-registering and updating Maca platform.")
 
 
 # NVML utils
@@ -446,12 +500,10 @@ class MacaPlatformBase(Platform):
 # all the related functions work on real physical device ids.
 # the major benefit of using NVML is that it will not initialize CUDA
 class MxmlPlatform(MacaPlatformBase):
-
     @classmethod
+    @cache
     @with_mxml_context
-    def get_device_capability(cls,
-                              device_id: int = 0
-                              ) -> Optional[DeviceCapability]:
+    def get_device_capability(cls, device_id: int = 0) -> DeviceCapability | None:
         try:
             physical_device_id = cls.device_id_to_physical_device_id(device_id)
             handle = pymxml.nvmlDeviceGetHandleByIndex(physical_device_id)
@@ -464,7 +516,7 @@ class MxmlPlatform(MacaPlatformBase):
     @with_mxml_context
     def has_device_capability(
         cls,
-        capability: Union[tuple[int, int], int],
+        capability: tuple[int, int] | int,
         device_id: int = 0,
     ) -> bool:
         try:
@@ -497,9 +549,7 @@ class MxmlPlatform(MacaPlatformBase):
         """
         query if the set of gpus are fully connected by nvlink (1 hop)
         """
-        handles = [
-            pymxml.nvmlDeviceGetHandleByIndex(i) for i in physical_device_ids
-        ]
+        handles = [pymxml.nvmlDeviceGetHandleByIndex(i) for i in physical_device_ids]
         for i, handle in enumerate(handles):
             for j, peer_handle in enumerate(handles):
                 if i < j:
@@ -514,7 +564,8 @@ class MxmlPlatform(MacaPlatformBase):
                     except pymxml.NVMLError:
                         logger.exception(
                             "NVLink detection failed. This is normal if"
-                            " your machine has no NVLink equipped.")
+                            " your machine has no NVLink equipped."
+                        )
                         return False
         return True
 
@@ -529,11 +580,11 @@ class MxmlPlatform(MacaPlatformBase):
     def log_warnings(cls):
         device_ids: int = pymxml.nvmlDeviceGetCount()
         if device_ids > 1:
-            device_names = [
-                cls._get_physical_device_name(i) for i in range(device_ids)
-            ]
-            if (len(set(device_names)) > 1
-                    and os.environ.get("CUDA_DEVICE_ORDER") != "PCI_BUS_ID"):
+            device_names = [cls._get_physical_device_name(i) for i in range(device_ids)]
+            if (
+                len(set(device_names)) > 1
+                and os.environ.get("CUDA_DEVICE_ORDER") != "PCI_BUS_ID"
+            ):
                 logger.warning(
                     "Detected different devices in the system: %s. Please"
                     " make sure to set `CUDA_DEVICE_ORDER=PCI_BUS_ID` to "
@@ -543,8 +594,8 @@ class MxmlPlatform(MacaPlatformBase):
 
 
 class NonMxmlMetaxPlatform(MacaPlatformBase):
-
     @classmethod
+    @cache
     def get_device_capability(cls, device_id: int = 0) -> DeviceCapability:
         major, minor = torch.cuda.get_device_capability(device_id)
         return DeviceCapability(major=major, minor=minor)
@@ -559,10 +610,11 @@ class NonMxmlMetaxPlatform(MacaPlatformBase):
         return device_props.total_memory
 
     @classmethod
-    def is_fully_connected(cls, physical_device_ids: List[int]) -> bool:
+    def is_fully_connected(cls, physical_device_ids: list[int]) -> bool:
         logger.exception(
             "MetaXLink detection not possible, as context support was"
-            " not found. Assuming no MetaXLink available.")
+            " not found. Assuming no MetaXLink available."
+        )
         return False
 
 

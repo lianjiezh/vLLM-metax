@@ -4,6 +4,7 @@
 
 Users of vLLM should always import **only** these wrappers.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -13,14 +14,15 @@ from typing import Any, Callable, NoReturn
 import torch
 
 import vllm.envs as envs
-from vllm.utils import has_deep_gemm
+from vllm.utils.import_utils import has_deep_gemm
 
 
 def _missing(*_: Any, **__: Any) -> NoReturn:
     """Placeholder for unavailable DeepGEMM backend."""
     raise RuntimeError(
         "DeepGEMM backend is not available. Please install the `deep_gemm` "
-        "package to enable BF16 kernels.")
+        "package to enable BF16 kernels."
+    )
 
 
 _bf16_mqa_logits_impl: Callable[..., Any] | None = None
@@ -35,10 +37,11 @@ def _lazy_init() -> None:
         return
 
     # Set up deep_gemm cache path
-    DEEP_GEMM_JIT_CACHE_ENV_NAME = 'DG_JIT_CACHE_DIR'
+    DEEP_GEMM_JIT_CACHE_ENV_NAME = "DG_JIT_CACHE_DIR"
     if not os.environ.get(DEEP_GEMM_JIT_CACHE_ENV_NAME, None):
         os.environ[DEEP_GEMM_JIT_CACHE_ENV_NAME] = os.path.join(
-            envs.VLLM_CACHE_ROOT, "deep_gemm")
+            envs.VLLM_CACHE_ROOT, "deep_gemm"
+        )
 
     _dg = importlib.import_module("deep_gemm")
 
@@ -109,14 +112,16 @@ def bf16_paged_mqa_logits(
     _lazy_init()
     if _bf16_paged_mqa_logits_impl is None:
         return _missing()
-    return _bf16_paged_mqa_logits_impl(q_bf16,
-                                       kv_cache_bf16,
-                                       weights,
-                                       context_lens,
-                                       block_tables,
-                                       schedule_metadata,
-                                       max_model_len,
-                                       clean_logits=True)
+    return _bf16_paged_mqa_logits_impl(
+        q_bf16,
+        kv_cache_bf16,
+        weights,
+        context_lens,
+        block_tables,
+        schedule_metadata,
+        max_model_len,
+        clean_logits=True,
+    )
 
 
 __all__ = [

@@ -40,6 +40,7 @@ def import_pymxml():
     module to our codebase, and use it directly.
     """
     import vllm_metax.third_party.pymxml as pymxml
+
     return pymxml
 
 
@@ -55,8 +56,8 @@ def find_mccl_library() -> str:
     # manually load the nccl library
     if so_file:
         logger.info(
-            "Found nccl from environment variable VLLM_NCCL_SO_PATH=%s",
-            so_file)
+            "Found nccl from environment variable VLLM_NCCL_SO_PATH=%s", so_file
+        )
     else:
         if torch.version.cuda is not None:
             so_file = "libmccl.so"
@@ -73,4 +74,5 @@ def vllm_version():
         return mx_envs.VLLM_OFFICIAL_VERSION
     else:
         import vllm
+
         return vllm.__version__

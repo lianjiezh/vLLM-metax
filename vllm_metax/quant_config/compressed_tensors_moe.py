@@ -3,31 +3,31 @@ import torch
 from typing import Callable, Optional, Union
 from vllm.model_executor.layers.fused_moe import FusedMoE
 from vllm.model_executor.layers.quantization.compressed_tensors.compressed_tensors_moe import (
-    CompressedTensorsMoEMethod, CompressedTensorsW8A8Int8MoEMethod,
-    CompressedTensorsWNA16MoEMethod)
+    CompressedTensorsMoEMethod,
+    CompressedTensorsW8A8Int8MoEMethod,
+    CompressedTensorsWNA16MoEMethod,
+)
 
 
 class MacaCompressedTensorsMoEMethod(CompressedTensorsMoEMethod):
-
     @staticmethod
     def get_moe_method(
         quant_config: "CompressedTensorsConfig",  # type: ignore # noqa E501
-        layer: torch.nn.Module
+        layer: torch.nn.Module,
     ) -> "CompressedTensorsMoEMethod":
-        moe_method = CompressedTensorsMoEMethod.get_moe_method(
-            quant_config, layer)
+        moe_method = CompressedTensorsMoEMethod.get_moe_method(quant_config, layer)
         if isinstance(moe_method, CompressedTensorsWNA16MoEMethod):
             moe_method = MacaCompressedTensorsWNA16MoEMethod(
-                quant_config, layer.moe_config)
+                quant_config, layer.moe_config
+            )
         elif isinstance(moe_method, CompressedTensorsW8A8Int8MoEMethod):
             moe_method = MacaCompressedTensorsW8A8Int8MoEMethod(
-                quant_config, layer.moe_config)
+                quant_config, layer.moe_config
+            )
         return moe_method
 
 
-class MacaCompressedTensorsW8A8Int8MoEMethod(CompressedTensorsW8A8Int8MoEMethod
-                                             ):
-
+class MacaCompressedTensorsW8A8Int8MoEMethod(CompressedTensorsW8A8Int8MoEMethod):
     def apply(
         self,
         layer: torch.nn.Module,
@@ -55,8 +55,8 @@ class MacaCompressedTensorsW8A8Int8MoEMethod(CompressedTensorsW8A8Int8MoEMethod
 
         if enable_eplb:
             raise NotImplementedError(
-                "EPLB not supported for "
-                "`CompressedTensorsW8A8Int8MoEMethod` yet.")
+                "EPLB not supported for `CompressedTensorsW8A8Int8MoEMethod` yet."
+            )
 
         from vllm_metax.model_executor.layers.fused_moe import fused_experts
 
@@ -72,7 +72,8 @@ class MacaCompressedTensorsW8A8Int8MoEMethod(CompressedTensorsW8A8Int8MoEMethod
             scoring_func=scoring_func,
             routed_scaling_factor=routed_scaling_factor,
             e_score_correction_bias=e_score_correction_bias,
-            indices_type=self.topk_indices_dtype)
+            indices_type=self.topk_indices_dtype,
+        )
 
         return fused_experts(
             hidden_states=x,
@@ -90,7 +91,6 @@ class MacaCompressedTensorsW8A8Int8MoEMethod(CompressedTensorsW8A8Int8MoEMethod
 
 
 class MacaCompressedTensorsWNA16MoEMethod(CompressedTensorsWNA16MoEMethod):
-
     def apply(
         self,
         layer: torch.nn.Module,
@@ -117,8 +117,9 @@ class MacaCompressedTensorsWNA16MoEMethod(CompressedTensorsWNA16MoEMethod):
         assert self.fused_experts is None
 
         if enable_eplb:
-            raise NotImplementedError("EPLB not supported for "
-                                      "`CompressedTensorsWNA16MoEMethod` yet.")
+            raise NotImplementedError(
+                "EPLB not supported for `CompressedTensorsWNA16MoEMethod` yet."
+            )
 
         from vllm_metax.model_executor.layers.fused_moe import fused_experts
 
@@ -134,7 +135,8 @@ class MacaCompressedTensorsWNA16MoEMethod(CompressedTensorsWNA16MoEMethod):
             scoring_func=scoring_func,
             routed_scaling_factor=routed_scaling_factor,
             e_score_correction_bias=e_score_correction_bias,
-            indices_type=self.topk_indices_dtype)
+            indices_type=self.topk_indices_dtype,
+        )
 
         return fused_experts(
             x,

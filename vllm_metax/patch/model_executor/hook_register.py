@@ -1,8 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
+from asyncio.log import logger
 from vllm.model_executor.layers.quantization import (
-    _CUSTOMIZED_METHOD_TO_QUANT_CONFIG, QUANTIZATION_METHODS,
-    QuantizationConfig, register_quantization_config)
+    _CUSTOMIZED_METHOD_TO_QUANT_CONFIG,
+    QUANTIZATION_METHODS,
+    QuantizationConfig,
+    register_quantization_config,
+)
 
 
 def register_quantization_config(quantization: str):
@@ -15,9 +19,13 @@ def register_quantization_config(quantization: str):
         quantization (str): The quantization method name.
 
     Examples:
-        >>> from vllm.model_executor.layers.quantization import register_quantization_config
+        >>> from vllm.model_executor.layers.quantization import (
+        ...     register_quantization_config,
+        ... )
         >>> from vllm.model_executor.layers.quantization import get_quantization_config
-        >>> from vllm.model_executor.layers.quantization.base_config import QuantizationConfig
+        >>> from vllm.model_executor.layers.quantization.base_config import (
+        ...     QuantizationConfig,
+        ... )
         >>>
         >>> @register_quantization_config("my_quant")
         ... class MyQuantConfig(QuantizationConfig):
@@ -28,9 +36,17 @@ def register_quantization_config(quantization: str):
     """  # noqa: E501
 
     def _wrapper(quant_config_cls):
+        if quantization in QUANTIZATION_METHODS:
+            logger.warning(
+                "The quantization method `%s` is already exists."
+                " and will be overwritten by the quantization config %s.",
+                quantization,
+                quant_config_cls,
+            )
         if not issubclass(quant_config_cls, QuantizationConfig):
-            raise ValueError("The quantization config must be a subclass of "
-                             "`QuantizationConfig`.")
+            raise ValueError(
+                "The quantization config must be a subclass of `QuantizationConfig`."
+            )
         _CUSTOMIZED_METHOD_TO_QUANT_CONFIG[quantization] = quant_config_cls
         QUANTIZATION_METHODS.append(quantization)
         return quant_config_cls
@@ -40,4 +56,6 @@ def register_quantization_config(quantization: str):
 
 import vllm.model_executor.layers.quantization
 
-vllm.model_executor.layers.quantization.register_quantization_config = register_quantization_config
+vllm.model_executor.layers.quantization.register_quantization_config = (
+    register_quantization_config
+)

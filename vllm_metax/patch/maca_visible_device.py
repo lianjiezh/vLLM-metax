@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-from vllm.worker.worker_base import WorkerWrapperBase, logger
+from vllm.v1.worker.worker_base import WorkerWrapperBase, logger
 import contextlib
 
 from typing import List, Dict, Iterator
 import os
-from vllm.utils import update_environment_variables
+from vllm.utils.system_utils import update_environment_variables
 from vllm.platforms import current_platform
 from vllm.v1.engine.utils import get_device_indices
 from unittest.mock import patch
@@ -12,11 +12,12 @@ from vllm.config import VllmConfig
 
 
 def update_environment_variables_with_maca(
-        self, envs_list: List[Dict[str, str]]) -> None:
+    self, envs_list: List[Dict[str, str]]
+) -> None:
     envs = envs_list[self.rpc_rank]
-    key = 'CUDA_VISIBLE_DEVICES'
+    key = "CUDA_VISIBLE_DEVICES"
     # sync `MACA_VISIBLE_DEVICES`` with `CUDA_VISIBLE_DEVICES`
-    envs['MACA_VISIBLE_DEVICES'] = envs.get(key, '')
+    envs["MACA_VISIBLE_DEVICES"] = envs.get(key, "")
     if key in envs and key in os.environ:
         # overwriting CUDA_VISIBLE_DEVICES is desired behavior
         # suppress the warning in `update_environment_variables`
@@ -25,8 +26,9 @@ def update_environment_variables_with_maca(
 
 
 @contextlib.contextmanager
-def set_device_control_env_var_with_maca(vllm_config: VllmConfig,
-                                         local_dp_rank: int) -> Iterator[None]:
+def set_device_control_env_var_with_maca(
+    vllm_config: VllmConfig, local_dp_rank: int
+) -> Iterator[None]:
     """
     Temporarily set CUDA_VISIBLE_DEVICES or equivalent
     for engine subprocess.
@@ -35,8 +37,8 @@ def set_device_control_env_var_with_maca(vllm_config: VllmConfig,
     evar = current_platform.device_control_env_var
 
     value = get_device_indices(evar, local_dp_rank, world_size)
-    with patch.dict(os.environ, values=((evar, value), )):
-        os.environ['MACA_VISIBLE_DEVICES'] = value
+    with patch.dict(os.environ, values=((evar, value),)):
+        os.environ["MACA_VISIBLE_DEVICES"] = value
         yield
 
 

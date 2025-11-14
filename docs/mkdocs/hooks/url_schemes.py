@@ -46,9 +46,9 @@ github_link = re.compile(rf"(\[{TITLE}\]\(|<){URL}(\)|>)")
 relative_link = re.compile(rf"\[{TITLE}\]\({RELATIVE}\)")
 
 
-def on_page_markdown(markdown: str, *, page: Page, config: MkDocsConfig,
-                     files: Files) -> str:
-
+def on_page_markdown(
+    markdown: str, *, page: Page, config: MkDocsConfig, files: Files
+) -> str:
     def replace_relative_link(match: re.Match) -> str:
         """Replace relative file links with URLs if they point outside the docs dir."""
         title = match.group("title")

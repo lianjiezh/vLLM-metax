@@ -169,6 +169,19 @@ TORCH_LIBRARY_EXPAND(TORCH_EXTENSION_NAME, ops) {
   ops.impl("apply_repetition_penalties_", torch::kCUDA,
            &apply_repetition_penalties_);
 
+  // Optimized top-k per row operation
+  ops.def(
+      "top_k_per_row(Tensor logits, Tensor rowStarts, Tensor rowEnds, "
+      "Tensor! indices, int numRows, int stride0, "
+      "int stride1) -> ()");
+  ops.impl("top_k_per_row", torch::kCUDA, &top_k_per_row);
+
+  ops.def(
+      "top_k_per_row_decode(Tensor logits, int next_n, "
+      "Tensor seq_lens, Tensor! indices, int numRows, "
+      "int stride0, int stride1) -> ()");
+  ops.impl("top_k_per_row_decode", torch::kCUDA, &top_k_per_row_decode);
+
   // ┌------------------------  Not supported for Metax
   // -------------------------┐ Layernorm-quant Apply Root Mean Square (RMS)
   // Normalization to the input tensor.

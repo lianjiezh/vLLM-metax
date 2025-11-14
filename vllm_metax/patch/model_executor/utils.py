@@ -5,8 +5,9 @@ import torch
 import vllm
 from vllm.logger import init_logger
 from vllm.model_executor.layers.quantization.utils.int8_utils import (
-    per_token_group_quant_int8)
-from vllm.utils import cdiv
+    per_token_group_quant_int8,
+)
+from vllm.utils.math_utils import cdiv
 
 from vllm import _custom_ops as ops
 from vllm.model_executor.layers.fused_moe import utils
@@ -29,8 +30,7 @@ def _int8_quantize(
     # activations apply per-token quantization. Otherwise, assume
     # activation tensor-wise fp8/int8 quantization, dynamic or static
     if block_shape is None:
-        assert per_act_token, \
-            "int8 quantization only supports block or channel-wise"
+        assert per_act_token, "int8 quantization only supports block or channel-wise"
 
         # ┌------------------------  Metax Modification -------------------------┐
         # A, A_scale = per_token_quant_int8(A)
