@@ -1,14 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
-# 2025 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved. 
 from collections.abc import Iterable
 from typing import Optional
 
 import torch
 import torch.nn as nn
 from transformers import PretrainedConfig
-
-from vllm.config import VllmConfig
+from vllm.config import CacheConfig, ModelConfig, VllmConfig
 from vllm.model_executor.layers.fused_moe import FusedMoE
 from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.logits_processor import LogitsProcessor
@@ -16,13 +14,12 @@ from vllm.model_executor.layers.quantization import QuantizationConfig
 from vllm.model_executor.layers.vocab_parallel_embedding import (
     ParallelLMHead, VocabParallelEmbedding)
 from vllm.model_executor.model_loader.weight_utils import default_weight_loader
-from vllm.model_executor.sampling_metadata import SamplingMetadata
-from vllm.sequence import IntermediateTensors
-
-from vllm.model_executor.models.deepseek_v2 import (DeepseekV2DecoderLayer,
-                          get_spec_layer_idx_from_weight_name)
+from vllm.model_executor.models.deepseek_v2 import (
+    DeepseekV2DecoderLayer, get_spec_layer_idx_from_weight_name)
 from vllm.model_executor.models.interfaces import SupportsPP
 from vllm.model_executor.models.utils import maybe_prefix
+from vllm.model_executor.sampling_metadata import SamplingMetadata
+from vllm.sequence import IntermediateTensors
 
 
 class SharedHead(nn.Module):
@@ -44,11 +41,15 @@ class SharedHead(nn.Module):
 
 class DeepSeekMultiTokenPredictorLayer(nn.Module):
 
-    def __init__(self, vllm_config: VllmConfig, prefix: str) -> None:
+    def __init__(
+        self,
+        config: PretrainedConfig,
+        prefix: str,
+        model_config: ModelConfig,
+        cache_config: Optional[CacheConfig] = None,
+        quant_config: Optional[QuantizationConfig] = None,
+    ) -> None:
         super().__init__()
-
-        config = vllm_config.model_config.hf_config
-        quant_config = vllm_config.quant_config
 
         self.enorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.hnorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
@@ -56,7 +57,8 @@ class DeepSeekMultiTokenPredictorLayer(nn.Module):
                                  config.hidden_size,
                                  bias=False)
         self.shared_head = SharedHead(config=config, quant_config=quant_config)
-        self.mtp_block = DeepseekV2DecoderLayer(vllm_config, prefix)
+        self.mtp_block = DeepseekV2DecoderLayer(config, prefix, model_config,
+                                                cache_config, quant_config)
 
     def forward(
         self,
@@ -92,8 +94,13 @@ class DeepSeekMultiTokenPredictor(nn.Module):
         # to map the exact layer index from weights
         self.layers = torch.nn.ModuleDict({
             str(idx):
-            DeepSeekMultiTokenPredictorLayer(vllm_config,
-                                             f"{prefix}.layers.{idx}")
+            DeepSeekMultiTokenPredictorLayer(
+                config,
+                f"{prefix}.layers.{idx}",
+                model_config=vllm_config.model_config,
+                cache_config=vllm_config.cache_config,
+                quant_config=vllm_config.quant_config,
+            )
             for idx in range(self.mtp_start_layer_idx,
                              self.mtp_start_layer_idx + self.num_mtp_layers)
         })
@@ -101,6 +108,7 @@ class DeepSeekMultiTokenPredictor(nn.Module):
             config.vocab_size,
             config.hidden_size,
         )
+
         self.logits_processor = LogitsProcessor(config.vocab_size)
 
     def forward(
@@ -150,13 +158,14 @@ class DeepSeekMTP(nn.Module, SupportsPP):
         self,
         input_ids: torch.Tensor,
         positions: torch.Tensor,
-        hidden_states: torch.Tensor,
+        previous_hidden_states: torch.Tensor,
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         spec_step_idx: int = 0,
     ) -> torch.Tensor:
-        hidden_states = self.model(input_ids, positions, hidden_states,
-                                   inputs_embeds, spec_step_idx)
+        hidden_states = self.model(input_ids, positions,
+                                   previous_hidden_states, inputs_embeds,
+                                   spec_step_idx)
         return hidden_states
 
     def compute_logits(
@@ -173,8 +182,6 @@ class DeepSeekMTP(nn.Module, SupportsPP):
         stacked_params_mapping = [
             ("gate_up_proj", "gate_proj", 0),
             ("gate_up_proj", "up_proj", 1),
-            ("fused_qkv_a_proj", "q_a_proj", 0),
-            ("fused_qkv_a_proj", "kv_a_proj_with_mqa", 1),
         ]
 
         expert_params_mapping = FusedMoE.make_expert_params_mapping(
@@ -204,18 +211,14 @@ class DeepSeekMTP(nn.Module, SupportsPP):
                 # for mlp.experts[0].gate_gate_up_proj, which breaks load.
                 if (("mlp.experts." in name) and name not in params_dict):
                     continue
-                name_mapped = name.replace(weight_name, param_name)
-
-                # QKV fusion is optional, fall back to normal
-                # weight loading if it's not enabled
-                if ((param_name == "fused_qkv_a_proj")
-                        and name_mapped not in params_dict):
-                    continue
-                else:
-                    name = name_mapped
-
+                name = name.replace(weight_name, param_name)
                 # Skip loading extra bias for GPTQ models.
                 if name.endswith(".bias") and name not in params_dict:
+                    continue
+                # According to DeepSeek-V3 Technical Report, MTP modules
+                # shares embedding layer. We only load the first weights.
+                if (spec_layer != self.model.mtp_start_layer_idx
+                        and ".layers" not in name):
                     continue
 
                 param = params_dict[name]
@@ -240,12 +243,6 @@ class DeepSeekMTP(nn.Module, SupportsPP):
                 else:
                     # Skip loading extra bias for GPTQ models.
                     if name.endswith(".bias") and name not in params_dict:
-                        continue
-
-                    # According to DeepSeek-V3 Technical Report, MTP modules
-                    # shares embedding layer. We only load the first weights.
-                    if (spec_layer != self.model.mtp_start_layer_idx
-                            and ".layers" not in name):
                         continue
 
                     param = params_dict[name]

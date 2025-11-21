@@ -1,4 +1,3 @@
-// 2025 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved. 
 #include "cuda_utils.h"
 
 int64_t get_device_attribute(int64_t attribute, int64_t device_id) {

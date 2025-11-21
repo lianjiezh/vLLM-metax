@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
-# 2025 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved. 
 """Code inside this file can safely assume cuda platform, e.g. importing
 pynvml. However, it should not initialize cuda context.
 """
@@ -91,10 +90,6 @@ class MacaPlatformBase(Platform):
 
     @classmethod
     def is_cuda_alike(cls) -> bool:
-        return True
-
-    @classmethod
-    def is_sleep_mode_available(cls) -> bool:
         return True
 
     @classmethod
@@ -334,8 +329,7 @@ class MacaPlatformBase(Platform):
 
     @classmethod
     def get_punica_wrapper(cls) -> str:
-        # return "vllm.lora.punica_wrapper.punica_gpu.PunicaWrapperGPU"
-        return "vllm_metax.lora.punica_maca.MXPunicaWrapperGPU"
+        return "vllm.lora.punica_wrapper.punica_gpu.PunicaWrapperGPU"
 
     @classmethod
     def get_device_communicator_cls(cls) -> str:
